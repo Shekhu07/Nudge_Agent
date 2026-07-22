@@ -1,0 +1,98 @@
+{
+  "_meta": {
+    "SYNTHETIC": true,
+    "warning": "These are SYNTHETIC user profiles, not real Blinkit customer data. They are hand-authored to reflect the behavior patterns of the real Part 2 'stuck segment' (heavy, habitual, narrow-category buyers) documented in docs/problem_statement.md. Blinkit's real order data was not available for this fellowship MVP; this is the standard, expected substitute and is labeled as such in the deck.",
+    "grounded_in": "docs/problem_statement.md sections 1-4 (real N=25 Phase 3 survey)",
+    "segment_reference": "14/25 (56%) survey respondents described themselves as 'mostly stick to the same categories'"
+  },
+  "profiles": [
+    {
+      "user_id": "SYN-001",
+      "persona": "Habitual grocery-only, unresolved dairy incident",
+      "city_tier": 1,
+      "order_frequency": "Daily",
+      "top_categories": ["groceries", "fresh_produce", "dairy"],
+      "categories_ever_purchased": 3,
+      "recent_incident": {"happened": true, "type": "expired", "category": "dairy", "resolved": false},
+      "self_reported_behavior": "mostly stick to the same categories",
+      "stated_barrier": "I avoid buying any fresh products, dairy or perishables from quick commerce now"
+    },
+    {
+      "user_id": "SYN-002",
+      "persona": "Electronics-skeptic after damaged order",
+      "city_tier": 1,
+      "order_frequency": "2-3 times a week",
+      "top_categories": ["groceries", "snacks", "household"],
+      "categories_ever_purchased": 4,
+      "recent_incident": {"happened": true, "type": "damaged", "category": "electronics", "resolved": true},
+      "self_reported_behavior": "mostly stick to the same categories",
+      "stated_barrier": "skeptical of buying electronic products from Blinkit and similar apps"
+    },
+    {
+      "user_id": "SYN-003",
+      "persona": "Retreated to essentials after unresolved puja-item order",
+      "city_tier": 2,
+      "order_frequency": "2-3 times a week",
+      "top_categories": ["groceries", "fresh_produce"],
+      "categories_ever_purchased": 2,
+      "recent_incident": {"happened": true, "type": "damaged_wrong_size", "category": "puja_items", "resolved": false},
+      "self_reported_behavior": "mostly stick to the same categories",
+      "stated_barrier": "I only order essential items now if anything urgent"
+    },
+    {
+      "user_id": "SYN-004",
+      "persona": "Crushed-stationery fulfillment failure (packaging, not source quality)",
+      "city_tier": 2,
+      "order_frequency": "Weekly",
+      "top_categories": ["groceries", "household", "snacks"],
+      "categories_ever_purchased": 5,
+      "recent_incident": {"happened": true, "type": "packaging_crush", "category": "stationery", "resolved": true},
+      "self_reported_behavior": "mostly stick to the same categories",
+      "stated_barrier": "fragile things get packed under heavy groceries and arrive crushed"
+    },
+    {
+      "user_id": "SYN-005",
+      "persona": "Narrow basket, no incident, low intent",
+      "city_tier": 3,
+      "order_frequency": "Weekly",
+      "top_categories": ["groceries", "fresh_produce"],
+      "categories_ever_purchased": 2,
+      "recent_incident": {"happened": false, "type": null, "category": null, "resolved": null},
+      "self_reported_behavior": "mostly stick to the same categories",
+      "stated_barrier": "I just don't need those other categories"
+    },
+    {
+      "user_id": "SYN-006",
+      "persona": "Heavy user, no incident, never explored beyond staples",
+      "city_tier": 1,
+      "order_frequency": "Daily",
+      "top_categories": ["groceries", "dairy", "snacks", "beverages"],
+      "categories_ever_purchased": 4,
+      "recent_incident": {"happened": false, "type": null, "category": null, "resolved": null},
+      "self_reported_behavior": "mostly stick to the same categories",
+      "stated_barrier": "never really thought to try personal care or home from here"
+    },
+    {
+      "user_id": "SYN-007",
+      "persona": "Incident but fully refunded, no behavior change (resilient)",
+      "city_tier": 1,
+      "order_frequency": "2-3 times a week",
+      "top_categories": ["groceries", "snacks", "household", "personal_care", "beverages"],
+      "categories_ever_purchased": 6,
+      "recent_incident": {"happened": true, "type": "damaged", "category": "snacks", "resolved": true},
+      "self_reported_behavior": "actively try new categories",
+      "stated_barrier": "the refund was instant so I didn't really mind"
+    },
+    {
+      "user_id": "SYN-008",
+      "persona": "Platform-churn risk (shifted spend to competitor after incident)",
+      "city_tier": 1,
+      "order_frequency": "Weekly",
+      "top_categories": ["groceries", "fresh_produce"],
+      "categories_ever_purchased": 3,
+      "recent_incident": {"happened": true, "type": "damaged", "category": "fresh_produce", "resolved": true},
+      "self_reported_behavior": "mostly stick to the same categories",
+      "stated_barrier": "I have started using Zepto more"
+    }
+  ]
+}

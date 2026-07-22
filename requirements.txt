@@ -1,0 +1,5 @@
+gradio
+groq
+python-dotenv
+fastapi
+uvicorn[standard]
