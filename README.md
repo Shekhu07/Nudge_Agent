@@ -63,11 +63,17 @@ uvicorn app_fastapi:app --reload --port 7860
 The Docker SDK is gated behind a paid plan on some accounts; the **Gradio SDK is free**
 and is what this README's front-matter (`sdk: gradio`, `app_file: app.py`) targets.
 
-1. Create a new Space → SDK: **Gradio** → Blank. Leave hardware on **CPU basic · Free**.
+1. Create a new Space → SDK: **Gradio** → Blank. **CPU basic · Free** is ideal; if your
+   account only offers **ZeroGPU**, that works too (see note below).
 2. Push this `mvp/` directory's contents to the Space repo (or upload via the web UI).
    `Dockerfile` is harmless to include but unused by the Gradio SDK.
 3. In the Space **Settings → Variables and secrets**, add secret `GROQ_API_KEY`.
 4. HF installs `requirements.txt` and runs `app.py` automatically → stable public URL.
+
+**ZeroGPU note:** this app is CPU-only (all LLM work is remote via Groq), but ZeroGPU
+Spaces refuse to boot without a `@spaces.GPU` function. `app.py` registers a tiny no-op
+(`_zerogpu_warmup`) purely to satisfy that startup check, and `spaces` is in
+`requirements.txt`. So it runs on either CPU basic or ZeroGPU with no code change.
 
 ## Endpoints (FastAPI variant only, `app_fastapi.py`)
 

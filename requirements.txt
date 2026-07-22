@@ -1,5 +1,6 @@
 gradio
 groq
 python-dotenv
+spaces
 fastapi
 uvicorn[standard]

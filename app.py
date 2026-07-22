@@ -16,6 +16,29 @@ from friction_matching import load_profiles, load_themes, match_profile_to_theme
 
 load_dotenv()
 
+# --- ZeroGPU compatibility -------------------------------------------------
+# HuggingFace ZeroGPU Spaces refuse to start unless at least one @spaces.GPU
+# function is detected. This app does all LLM work remotely via Groq and needs
+# NO local GPU, so we register one tiny no-op just to satisfy that startup check.
+# On any non-ZeroGPU environment (local, CPU Spaces) `spaces` is absent and GPU
+# falls back to a pass-through decorator.
+try:
+    import spaces
+
+    GPU = spaces.GPU
+except ImportError:  # local / non-ZeroGPU env
+    def GPU(*args, **kwargs):
+        if args and callable(args[0]):
+            return args[0]
+        return lambda fn: fn
+
+
+@GPU(duration=1)
+def _zerogpu_warmup():
+    """No-op: exists solely so ZeroGPU detects a GPU function at startup."""
+    return "ok"
+# ---------------------------------------------------------------------------
+
 _THEMES = load_themes()
 _PROFILES = {p["user_id"]: p for p in load_profiles()}
 _CHOICES = [f"{p['user_id']} — {p['persona']}" for p in _PROFILES.values()]
