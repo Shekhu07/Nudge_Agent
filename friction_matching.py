@@ -18,17 +18,22 @@ SUGGESTABLE_CATEGORIES = [
 ]
 
 # Adjacency weights: how strongly an EXISTING category pulls toward each suggestable one.
-# This is the (B) fix — the agent was collapsing to "personal care" for almost every
-# profile (first-item + safe-default bias), so category choice was effectively constant.
-# Scoring a per-user best-fit shortlist here makes the choice reasoned and varied, and the
-# agent picks from the ranked shortlist rather than a flat list it always reads top-down.
+# This is the (B) fix. Two failure modes were corrected here:
+#   1. The agent collapsed to "personal care" (first-item + safe-default bias).
+#   2. After that, it collapsed to "health & wellness"/"beauty & cosmetics" — a different
+#      label but the same grooming-ish bucket, which still reads as "personal care items".
+# So grocery/produce baskets deliberately pull toward DISTINCT, non-grooming categories
+# (kitchen & dining, home & cleaning, packaged gourmet, pet supplies, baby care); the
+# grooming categories only score when the basket actually signals them.
+import hashlib
+
 CATEGORY_ADJACENCY = {
-    "groceries":     {"home & cleaning": 1, "kitchen & dining": 1, "health & wellness": 1, "personal care": 1},
-    "fresh_produce": {"health & wellness": 2, "packaged gourmet foods": 1, "kitchen & dining": 1},
-    "dairy":         {"health & wellness": 1, "baby care": 2, "packaged gourmet foods": 1},
-    "snacks":        {"packaged gourmet foods": 2, "beauty & cosmetics": 1},
-    "beverages":     {"packaged gourmet foods": 2, "health & wellness": 1},
-    "household":     {"home & cleaning": 2, "kitchen & dining": 1, "stationery & office": 1, "pet supplies": 1},
+    "groceries":     {"kitchen & dining": 2, "home & cleaning": 1, "packaged gourmet foods": 1},
+    "fresh_produce": {"kitchen & dining": 2, "packaged gourmet foods": 1, "health & wellness": 1},
+    "dairy":         {"baby care": 2, "packaged gourmet foods": 1, "health & wellness": 1},
+    "snacks":        {"packaged gourmet foods": 2, "kitchen & dining": 1},
+    "beverages":     {"packaged gourmet foods": 2, "kitchen & dining": 1},
+    "household":     {"home & cleaning": 2, "stationery & office": 1, "pet supplies": 1, "kitchen & dining": 1},
     "personal_care": {"beauty & cosmetics": 2, "health & wellness": 1, "baby care": 1},
 }
 
@@ -39,8 +44,13 @@ def _norm(cat):
 
 def rank_suggestable_categories(profile, top_n=4):
     """Return the top_n best-fit suggestable categories for a profile, ranked by
-    adjacency to its existing basket and excluding any overlap. Deterministic:
-    ties break alphabetically so the same basket always yields the same shortlist.
+    adjacency to its existing basket and excluding any overlap.
+
+    Deterministic. Ties break alphabetically. Because several synthetic profiles share
+    near-identical baskets, a per-user rotation is applied within the equally-adjacent
+    top pool so similar profiles don't all surface the same #1 — every category in the
+    pool already passed the adjacency bar, so this is a variety tiebreak, not a random
+    pick. Stable per user_id, so results are reproducible.
     """
     existing = {_norm(c) for c in profile.get("top_categories", [])}
     scores = {c: 0 for c in SUGGESTABLE_CATEGORIES}
@@ -48,9 +58,14 @@ def rank_suggestable_categories(profile, top_n=4):
         for scat, w in CATEGORY_ADJACENCY.get(ecat, {}).items():
             if scat in scores:
                 scores[scat] += w
-    ranked = sorted(SUGGESTABLE_CATEGORIES, key=lambda c: (-scores[c], c))
-    ranked = [c for c in ranked if _norm(c) not in existing]
-    return ranked[:top_n] or [c for c in SUGGESTABLE_CATEGORIES if _norm(c) not in existing]
+    ranked = [c for c in sorted(SUGGESTABLE_CATEGORIES, key=lambda c: (-scores[c], c))
+              if _norm(c) not in existing]
+    pool = ranked[:top_n] or [c for c in SUGGESTABLE_CATEGORIES if _norm(c) not in existing]
+    if len(pool) > 1:
+        seed = int(hashlib.md5(str(profile.get("user_id", "")).encode()).hexdigest(), 16)
+        offset = seed % len(pool)
+        pool = pool[offset:] + pool[:offset]
+    return pool
 
 
 def load_themes():
