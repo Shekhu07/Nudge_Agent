@@ -35,6 +35,24 @@ Synthetic profile  ->  Friction-Matching Layer  ->  Groq Agent            ->  Fa
 - **Agent layer** — Groq `llama-3.3-70b-versatile` generates nudge copy + reasoning,
   constrained to the matched theme. Honestly scopes down for low-intent (no-incident) users
   instead of overclaiming a trust fix. Gemini is **not** used (dropped project-wide).
+## Design vs. data (important)
+
+The UI is imported from the **"Blinkit category nudge agent redesign"** Claude Design
+project — an operator console (user picker → profile → agent reasoning) beside a phone
+mockup of what the shopper sees. The design *chrome* is reproduced faithfully; the
+**content is real**, not the mockup's hard-coded strings:
+
+| Mockup | Shipped |
+|---|---|
+| Hard-coded nudge copy, headlines and reasoning per persona | **Generated live by Groq** (`llama-3.3-70b-versatile`) on every click |
+| Invented confidence scores (88% / 81% / 84% / 79%) | **Real Part 1 theme evidence share** (e.g. 770/1,094 · 70%); out-of-scope users show "out of primary scope" rather than a fake number |
+| Product prices / MRP / % off | Dropped — replaced with an "Illustrative demo item" label rather than inventing pricing |
+| Personas invented in the mockup | The project's **existing 8 synthetic profiles**, extended with display-only fields (name, tenure, locality…), all still labelled SYNTHETIC in `data/synthetic_profiles.json` |
+
+Matching remains **deterministic** (no LLM), and the honest out-of-scope path is surfaced
+in the UI: a low-intent user with no incident gets an explicit banner saying the trust fix
+does not apply to them, per `docs/problem_statement.md` §6.
+
 - **Delivery layer** — Gradio UI (`app.py`), the free HuggingFace Spaces entrypoint.
   A FastAPI + HTML variant with a JSON `/api/nudge` endpoint is also kept in
   `app_fastapi.py` for local/API use and non-HF hosts (Render etc.).

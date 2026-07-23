@@ -42,9 +42,26 @@ Hard rules:
 5. Keep the nudge under 45 words. Keep the reasoning under 40 words.
 
 Return STRICT JSON only, no prose around it:
-{"suggested_category": "...", "nudge": "...", "reasoning": "..."}
-The "reasoning" field is your internal explanation of why this nudge fits THIS user and
-theme (for the PM, not shown to the user)."""
+{
+  "suggested_category": "...",
+  "nudge": "...",
+  "reasoning": "...",
+  "headline": "in-app card headline: a compelling 4-8 word phrase, not one word",
+  "body": "in-app card body: TWO full sentences (25-40 words) in second person. Sentence 1 names the habit you noticed in their order history. Sentence 2 invites them to try the new category.",
+  "refund_line": "the refund/return guarantee as a concrete 5-9 word phrase, e.g. 'Instant refund if quality isn't perfect'",
+  "fresh_line": "the quality/freshness signal as a concrete 5-9 word phrase, e.g. 'Verified brands, sealed and batch-checked'",
+  "cta": "button label, 2-5 words, action-first, e.g. 'Add starter set to cart'",
+  "product": "one concrete example product in the suggested category, 3-7 words, e.g. 'Daily Care Set (face wash + lotion)'",
+  "why_user": "why THIS user was targeted: TWO full sentences (30-45 words) citing their actual order cadence, category history and incident.",
+  "why_category": "why THIS category specifically: ONE-TWO full sentences (20-35 words) about adjacency to what they already buy.",
+  "emoji": "one emoji representing the category"
+}
+Write real, specific marketing copy — never single words or fragments in headline, body,
+why_user or why_category. Reference the user's concrete details, not generic phrasing.
+"nudge" is the one-line summary; "headline"/"body" are what the shopper actually sees.
+"reasoning", "why_user" and "why_category" are for the PM, not the shopper.
+refund_line and fresh_line ARE the two ranked trust drivers from rule 1 — they must be
+concrete and must appear whenever the theme is in primary scope."""
 
 
 def _client():

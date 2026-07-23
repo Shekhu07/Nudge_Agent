@@ -3,7 +3,8 @@
     "SYNTHETIC": true,
     "warning": "These are SYNTHETIC user profiles, not real Blinkit customer data. They are hand-authored to reflect the behavior patterns of the real Part 2 'stuck segment' (heavy, habitual, narrow-category buyers) documented in docs/problem_statement.md. Blinkit's real order data was not available for this fellowship MVP; this is the standard, expected substitute and is labeled as such in the deck.",
     "grounded_in": "docs/problem_statement.md sections 1-4 (real N=25 Phase 3 survey)",
-    "segment_reference": "14/25 (56%) survey respondents described themselves as 'mostly stick to the same categories'"
+    "segment_reference": "14/25 (56%) survey respondents described themselves as 'mostly stick to the same categories'",
+    "display_fields_note": "display_name, initials, avatar_bg, blurb, tenure, avg_basket, locality and orders are DISPLAY-ONLY fields added for the redesigned console/phone UI. They are SYNTHETIC like the rest of this file and are not real customer data. The behavioural fields (order_frequency, top_categories, recent_incident, stated_barrier) remain the ones grounded in the real Part 2 survey patterns and are what the matcher and agent use."
   },
   "profiles": [
     {
@@ -11,88 +12,272 @@
       "persona": "Habitual grocery-only, unresolved dairy incident",
       "city_tier": 1,
       "order_frequency": "Daily",
-      "top_categories": ["groceries", "fresh_produce", "dairy"],
+      "top_categories": [
+        "groceries",
+        "fresh_produce",
+        "dairy"
+      ],
       "categories_ever_purchased": 3,
-      "recent_incident": {"happened": true, "type": "expired", "category": "dairy", "resolved": false},
+      "recent_incident": {
+        "happened": true,
+        "type": "expired",
+        "category": "dairy",
+        "resolved": false
+      },
       "self_reported_behavior": "mostly stick to the same categories",
-      "stated_barrier": "I avoid buying any fresh products, dairy or perishables from quick commerce now"
+      "stated_barrier": "I avoid buying any fresh products, dairy or perishables from quick commerce now",
+      "display_name": "Priya Sharma",
+      "avatar_bg": "#FFE39A",
+      "blurb": "Weekly grocery loyalist",
+      "tenure": "1y 4m",
+      "avg_basket": "₹640 avg",
+      "locality": "Indiranagar",
+      "orders": 47,
+      "initials": "PS",
+      "cadence": "Daily",
+      "buys_display": [
+        "Groceries",
+        "Fresh Produce",
+        "Dairy"
+      ]
     },
     {
       "user_id": "SYN-002",
       "persona": "Electronics-skeptic after damaged order",
       "city_tier": 1,
       "order_frequency": "2-3 times a week",
-      "top_categories": ["groceries", "snacks", "household"],
+      "top_categories": [
+        "groceries",
+        "snacks",
+        "household"
+      ],
       "categories_ever_purchased": 4,
-      "recent_incident": {"happened": true, "type": "damaged", "category": "electronics", "resolved": true},
+      "recent_incident": {
+        "happened": true,
+        "type": "damaged",
+        "category": "electronics",
+        "resolved": true
+      },
       "self_reported_behavior": "mostly stick to the same categories",
-      "stated_barrier": "skeptical of buying electronic products from Blinkit and similar apps"
+      "stated_barrier": "skeptical of buying electronic products from Blinkit and similar apps",
+      "display_name": "Rahul Verma",
+      "avatar_bg": "#BEE3FF",
+      "blurb": "Snacks & staples regular",
+      "tenure": "11m",
+      "avg_basket": "₹320 avg",
+      "locality": "Koramangala",
+      "orders": 38,
+      "initials": "RV",
+      "cadence": "2-3 times a week",
+      "buys_display": [
+        "Groceries",
+        "Snacks",
+        "Household"
+      ]
     },
     {
       "user_id": "SYN-003",
       "persona": "Retreated to essentials after unresolved puja-item order",
       "city_tier": 2,
       "order_frequency": "2-3 times a week",
-      "top_categories": ["groceries", "fresh_produce"],
+      "top_categories": [
+        "groceries",
+        "fresh_produce"
+      ],
       "categories_ever_purchased": 2,
-      "recent_incident": {"happened": true, "type": "damaged_wrong_size", "category": "puja_items", "resolved": false},
+      "recent_incident": {
+        "happened": true,
+        "type": "damaged_wrong_size",
+        "category": "puja_items",
+        "resolved": false
+      },
       "self_reported_behavior": "mostly stick to the same categories",
-      "stated_barrier": "I only order essential items now if anything urgent"
+      "stated_barrier": "I only order essential items now if anything urgent",
+      "display_name": "Ananya Iyer",
+      "avatar_bg": "#F6C9E4",
+      "blurb": "Household & cleaning regular",
+      "tenure": "1y 9m",
+      "avg_basket": "₹710 avg",
+      "locality": "HSR Layout",
+      "orders": 52,
+      "initials": "AI",
+      "cadence": "2-3 times a week",
+      "buys_display": [
+        "Groceries",
+        "Fresh Produce"
+      ]
     },
     {
       "user_id": "SYN-004",
       "persona": "Crushed-stationery fulfillment failure (packaging, not source quality)",
       "city_tier": 2,
       "order_frequency": "Weekly",
-      "top_categories": ["groceries", "household", "snacks"],
+      "top_categories": [
+        "groceries",
+        "household",
+        "snacks"
+      ],
       "categories_ever_purchased": 5,
-      "recent_incident": {"happened": true, "type": "packaging_crush", "category": "stationery", "resolved": true},
+      "recent_incident": {
+        "happened": true,
+        "type": "packaging_crush",
+        "category": "stationery",
+        "resolved": true
+      },
       "self_reported_behavior": "mostly stick to the same categories",
-      "stated_barrier": "fragile things get packed under heavy groceries and arrive crushed"
+      "stated_barrier": "fragile things get packed under heavy groceries and arrive crushed",
+      "display_name": "Dev Menon",
+      "avatar_bg": "#C9F0D8",
+      "blurb": "Fitness & beverages",
+      "tenure": "8m",
+      "avg_basket": "₹480 avg",
+      "locality": "Whitefield",
+      "orders": 29,
+      "initials": "DM",
+      "cadence": "Weekly",
+      "buys_display": [
+        "Groceries",
+        "Household",
+        "Snacks"
+      ]
     },
     {
       "user_id": "SYN-005",
       "persona": "Narrow basket, no incident, low intent",
       "city_tier": 3,
       "order_frequency": "Weekly",
-      "top_categories": ["groceries", "fresh_produce"],
+      "top_categories": [
+        "groceries",
+        "fresh_produce"
+      ],
       "categories_ever_purchased": 2,
-      "recent_incident": {"happened": false, "type": null, "category": null, "resolved": null},
+      "recent_incident": {
+        "happened": false,
+        "type": null,
+        "category": null,
+        "resolved": null
+      },
       "self_reported_behavior": "mostly stick to the same categories",
-      "stated_barrier": "I just don't need those other categories"
+      "stated_barrier": "I just don't need those other categories",
+      "display_name": "Meera Nair",
+      "avatar_bg": "#FFD9C7",
+      "blurb": "Fresh produce buyer",
+      "tenure": "2y 1m",
+      "avg_basket": "₹520 avg",
+      "locality": "Jayanagar",
+      "orders": 61,
+      "initials": "MN",
+      "cadence": "Weekly",
+      "buys_display": [
+        "Groceries",
+        "Fresh Produce"
+      ]
     },
     {
       "user_id": "SYN-006",
       "persona": "Heavy user, no incident, never explored beyond staples",
       "city_tier": 1,
       "order_frequency": "Daily",
-      "top_categories": ["groceries", "dairy", "snacks", "beverages"],
+      "top_categories": [
+        "groceries",
+        "dairy",
+        "snacks",
+        "beverages"
+      ],
       "categories_ever_purchased": 4,
-      "recent_incident": {"happened": false, "type": null, "category": null, "resolved": null},
+      "recent_incident": {
+        "happened": false,
+        "type": null,
+        "category": null,
+        "resolved": null
+      },
       "self_reported_behavior": "mostly stick to the same categories",
-      "stated_barrier": "never really thought to try personal care or home from here"
+      "stated_barrier": "never really thought to try personal care or home from here",
+      "display_name": "Arjun Rao",
+      "avatar_bg": "#D9D3FF",
+      "blurb": "Bulk monthly shopper",
+      "tenure": "1y 6m",
+      "avg_basket": "₹1,150 avg",
+      "locality": "Bellandur",
+      "orders": 24,
+      "initials": "AR",
+      "cadence": "Daily",
+      "buys_display": [
+        "Groceries",
+        "Dairy",
+        "Snacks",
+        "Beverages"
+      ]
     },
     {
       "user_id": "SYN-007",
       "persona": "Incident but fully refunded, no behavior change (resilient)",
       "city_tier": 1,
       "order_frequency": "2-3 times a week",
-      "top_categories": ["groceries", "snacks", "household", "personal_care", "beverages"],
+      "top_categories": [
+        "groceries",
+        "snacks",
+        "household",
+        "personal_care",
+        "beverages"
+      ],
       "categories_ever_purchased": 6,
-      "recent_incident": {"happened": true, "type": "damaged", "category": "snacks", "resolved": true},
+      "recent_incident": {
+        "happened": true,
+        "type": "damaged",
+        "category": "snacks",
+        "resolved": true
+      },
       "self_reported_behavior": "actively try new categories",
-      "stated_barrier": "the refund was instant so I didn't really mind"
+      "stated_barrier": "the refund was instant so I didn't really mind",
+      "display_name": "Kavya Reddy",
+      "avatar_bg": "#CDEBF7",
+      "blurb": "Daily essentials only",
+      "tenure": "10m",
+      "avg_basket": "₹280 avg",
+      "locality": "Marathahalli",
+      "orders": 44,
+      "initials": "KR",
+      "cadence": "2-3 times a week",
+      "buys_display": [
+        "Groceries",
+        "Snacks",
+        "Household",
+        "Personal Care",
+        "Beverages"
+      ]
     },
     {
       "user_id": "SYN-008",
       "persona": "Platform-churn risk (shifted spend to competitor after incident)",
       "city_tier": 1,
       "order_frequency": "Weekly",
-      "top_categories": ["groceries", "fresh_produce"],
+      "top_categories": [
+        "groceries",
+        "fresh_produce"
+      ],
       "categories_ever_purchased": 3,
-      "recent_incident": {"happened": true, "type": "damaged", "category": "fresh_produce", "resolved": true},
+      "recent_incident": {
+        "happened": true,
+        "type": "damaged",
+        "category": "fresh_produce",
+        "resolved": true
+      },
       "self_reported_behavior": "mostly stick to the same categories",
-      "stated_barrier": "I have started using Zepto more"
+      "stated_barrier": "I have started using Zepto more",
+      "display_name": "Sanjay Bose",
+      "avatar_bg": "#F5E2A8",
+      "blurb": "Occasional top-ups",
+      "tenure": "7m",
+      "avg_basket": "₹390 avg",
+      "locality": "Malleshwaram",
+      "orders": 19,
+      "initials": "SB",
+      "cadence": "Weekly",
+      "buys_display": [
+        "Groceries",
+        "Fresh Produce"
+      ]
     }
   ]
 }
