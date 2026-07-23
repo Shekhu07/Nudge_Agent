@@ -11,16 +11,11 @@ import os
 from dotenv import load_dotenv
 from groq import Groq
 
+from friction_matching import rank_suggestable_categories
+
 load_dotenv()
 
 GROQ_MODEL = "llama-3.3-70b-versatile"
-
-# Categories to consider suggesting, kept away from each profile's existing staples.
-SUGGESTABLE_CATEGORIES = [
-    "personal care", "home & cleaning", "baby care", "pet supplies",
-    "beauty & cosmetics", "packaged gourmet foods", "health & wellness",
-    "kitchen & dining", "stationery & office",
-]
 
 SYSTEM_PROMPT = """You are the Category Nudge Agent for Blinkit, a quick-commerce app.
 Your job: write ONE short in-app nudge that encourages a specific repeat customer to try
@@ -33,8 +28,13 @@ Hard rules:
 2. The nudge MUST directly address the specific friction the user has experienced
    (given to you as the matched friction theme). Do not write generic "try something new!"
    copy.
-3. Suggest exactly ONE new category, drawn from the allowed list, that does not overlap
-   the user's existing categories.
+3. Suggest exactly ONE new category, chosen from the prioritized candidate list you are
+   given. That list is already ranked by how well each category fits THIS user's existing
+   basket, best-fit first, and none of them overlap what they already buy. Prefer the
+   highest-ranked candidate; you may pick a lower-ranked one ONLY if it is a clearly
+   stronger fit for this user's stated barrier or incident — and if you do, say why in
+   why_category. Never suggest a category outside the provided list, and never default to
+   the same "safe" category regardless of the user.
 4. Be honest about scope. If the matched theme says the user's stagnation is NOT
    trust-driven (low intent, no incident), do NOT pretend a guarantee fixes their reason
    for not exploring — lead instead with relevance and keep the guarantee as a secondary
@@ -69,6 +69,8 @@ def _client():
 
 
 def _build_user_prompt(profile, theme, match_reason):
+    candidates = rank_suggestable_categories(profile)
+    ranked_list = "\n".join(f"  {i}. {c}" for i, c in enumerate(candidates, 1))
     return f"""Matched friction theme: {theme['name']}
 Theme description: {theme['description']}
 Theme lead-with signals: {', '.join(theme.get('lead_with', []))}
@@ -81,8 +83,9 @@ User (synthetic profile):
 - Recent incident: {json.dumps(profile.get('recent_incident'))}
 - In their words: "{profile.get('stated_barrier', '')}"
 
-Allowed new categories to choose ONE from (must not overlap existing):
-{', '.join(SUGGESTABLE_CATEGORIES)}
+Prioritized candidate categories (ranked best-fit first for THIS user, none overlap
+their existing basket) — choose exactly ONE per rule 3:
+{ranked_list}
 
 Write the nudge now."""
 
