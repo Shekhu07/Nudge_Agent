@@ -117,6 +117,24 @@ footer,.footer,.show-api,.built-with,.settings{display:none !important}
 .nb-chip.primary{background:#FFFBEC !important;border:1.5px solid #F8CD1B !important;
   box-shadow:0 2px 10px rgba(248,205,27,.25) !important}
 
+/* Dropdown + number inputs (cart-filler tab). Gradio's native dropdown uses Tailwind
+   dark: variants (e.g. option rows get dark:bg-gray-600), but our theme-proofing forces
+   dark ink even under .dark — so if HF's iframe forces dark mode the option text goes
+   dark-on-dark and disappears. Pin the field and the options list to a light surface in
+   BOTH themes so the ink stays readable. Selectors verified against the rendered DOM. */
+.gradio-container input, .dark .gradio-container input,
+.gradio-container .secondary-wrap, .dark .gradio-container .secondary-wrap,
+.gradio-container ul.options, .dark .gradio-container ul.options,
+.gradio-container ul.options li, .dark .gradio-container ul.options li,
+.gradio-container ul.options li *, .dark .gradio-container ul.options li *{
+  background:#fff !important;color:#16130A !important}
+.gradio-container ul.options{border:1px solid #E7E8E2 !important;
+  box-shadow:0 8px 26px rgba(0,0,0,.14) !important}
+.gradio-container ul.options li.selected, .gradio-container ul.options li.active,
+.gradio-container ul.options li:hover,
+.dark .gradio-container ul.options li.selected, .dark .gradio-container ul.options li.active,
+.dark .gradio-container ul.options li:hover{background:#FFFBEC !important;color:#16130A !important}
+
 /* generate button */
 #gen, #genbatch{width:100% !important;border:none !important;font-size:15px !important;font-weight:800 !important;
   padding:15px !important;border-radius:14px !important;color:#16130A !important;
