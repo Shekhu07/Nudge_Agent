@@ -391,8 +391,8 @@ def auto_eligibility_html():
     return (
         '<div class="nb-eyebrow">Scheduled trigger · eligibility</div>'
         '<div style="font-size:13px;color:#44443B;margin:6px 0 14px;line-height:1.5">Rule: '
-        '<b>order_frequency = Weekly</b> AND <b>tenure &gt; 6 months</b>. Habitual, established '
-        'buyers whose basket has settled — the auto-nudge cohort.</div>'
+        '<b>order_frequency = Daily or Weekly</b> AND <b>tenure &gt; 6 months</b>. Habitual, '
+        'established buyers whose basket has settled — the auto-nudge cohort.</div>'
         f'{rows}'
         f'<div style="margin-top:14px;font-size:12.5px;font-weight:700;color:#16130A">'
         f'{n} of {len(PROFILES)} synthetic users qualify.</div>')
