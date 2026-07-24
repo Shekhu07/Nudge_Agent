@@ -215,6 +215,8 @@ def reasoning_html(theme, r=None):
 
     drivers = [("Refund guarantee", r.get("refund_line", "")),
                ("Freshness / quality signal", r.get("fresh_line", ""))]
+    if r.get("social_proof_line"):
+        drivers.append(("Peer social proof", r.get("social_proof_line", "")))
     d_html = "".join(f"""
       <div style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);
         border-radius:12px;padding:11px 13px;display:flex;gap:11px;align-items:flex-start">
@@ -308,6 +310,10 @@ def phone_html(p, r=None):
       <div style="display:flex;align-items:center;gap:9px;background:#EAF7EE;border:1px solid #C4E7CF;
         border-radius:11px;padding:9px 12px"><div style="font-size:16px">🌿</div>
         <div style="font-size:12.5px;font-weight:700;color:#146634">{esc(r.get('fresh_line'))}</div></div>
+      {(f'''<div style="display:flex;align-items:center;gap:9px;background:#F6EFFB;border:1px solid #E2D2F0;
+        border-radius:11px;padding:9px 12px"><div style="font-size:16px">💬</div>
+        <div style="font-size:12.5px;font-weight:700;color:#6B3FA0">{esc(r.get('social_proof_line'))}</div></div>'''
+        if r.get('social_proof_line') else '')}
     </div>
     <div style="display:flex;gap:12px;align-items:center;border:1px solid #EFEFE9;border-radius:14px;
       padding:11px;margin-bottom:15px">

@@ -39,7 +39,14 @@ Hard rules:
    trust-driven (low intent, no incident), do NOT pretend a guarantee fixes their reason
    for not exploring — lead instead with relevance and keep the guarantee as a secondary
    reassurance. Never overclaim.
-5. Keep the nudge under 45 words. Keep the reasoning under 40 words.
+5. Add ONE short peer social-proof line aimed at THIS user's specific fear (genuineness
+   for a fakes fear, freshness for an expiry fear, careful handling for a damage fear).
+   ABSOLUTE RULE: it must NOT invent statistics, star ratings, review counts, percentages,
+   or numbers of buyers — no fabricated figures of any kind. Phrase it as qualitative peer
+   reassurance (e.g. "Grocery regulars say these arrive genuine and sealed"). Include it
+   only when the theme is in primary scope; if the theme is out of primary scope, return an
+   empty string for social_proof_line.
+6. Keep the nudge under 45 words. Keep the reasoning under 40 words.
 
 Return STRICT JSON only, no prose around it:
 {
@@ -50,6 +57,7 @@ Return STRICT JSON only, no prose around it:
   "body": "in-app card body: TWO full sentences (25-40 words) in second person. Sentence 1 names the habit you noticed in their order history. Sentence 2 invites them to try the new category.",
   "refund_line": "the refund/return guarantee as a concrete 5-9 word phrase, e.g. 'Instant refund if quality isn't perfect'",
   "fresh_line": "the quality/freshness signal as a concrete 5-9 word phrase, e.g. 'Verified brands, sealed and batch-checked'",
+  "social_proof_line": "one short peer-reassurance line (6-12 words) addressing the user's specific fear; NO invented numbers, ratings, star counts, or buyer counts; empty string when the theme is out of primary scope",
   "cta": "button label, 2-5 words, action-first, e.g. 'Add starter set to cart'",
   "product": "one concrete example product in the suggested category, 3-7 words, e.g. 'Daily Care Set (face wash + lotion)'",
   "why_user": "why THIS user was targeted: TWO full sentences (30-45 words) citing their actual order cadence, category history and incident.",
@@ -61,7 +69,9 @@ why_user or why_category. Reference the user's concrete details, not generic phr
 "nudge" is the one-line summary; "headline"/"body" are what the shopper actually sees.
 "reasoning", "why_user" and "why_category" are for the PM, not the shopper.
 refund_line and fresh_line ARE the two ranked trust drivers from rule 1 — they must be
-concrete and must appear whenever the theme is in primary scope."""
+concrete and must appear whenever the theme is in primary scope. social_proof_line is the
+peer-reassurance driver from rule 5 and must NEVER contain a fabricated number, rating, or
+count — qualitative reassurance only."""
 
 
 def _client():
