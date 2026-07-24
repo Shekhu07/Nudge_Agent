@@ -48,6 +48,7 @@ mockup of what the shopper sees. The design *chrome* is reproduced faithfully; t
 | Invented confidence scores (88% / 81% / 84% / 79%) | **Real Part 1 theme evidence share** (e.g. 770/1,094 · 70%); out-of-scope users show "out of primary scope" rather than a fake number |
 | Product prices / MRP / % off | Dropped — replaced with an "Illustrative demo item" label rather than inventing pricing |
 | Personas invented in the mockup | The project's **existing 8 synthetic profiles**, extended with display-only fields (name, tenure, locality…), all still labelled SYNTHETIC in `data/synthetic_profiles.json` |
+| Social-proof with invented counts ("Over 1,200 buyers rated 5/5", from the external expansion playbook) | **Numbers-free `social_proof_line`** — qualitative peer reassurance generated per user, forbidden by the prompt from stating any figure/rating/count; empty for out-of-scope users |
 
 Matching remains **deterministic** (no LLM), and the honest out-of-scope path is surfaced
 in the UI: a low-intent user with no incident gets an explicit banner saying the trust fix
@@ -62,8 +63,11 @@ does not apply to them, per `docs/problem_statement.md` §6.
 Addresses only the ~50% of category stagnation that is quality/trust-driven, per
 `docs/problem_statement.md` §6. Low-intent users (no incident) are matched to an
 out-of-primary-scope theme and get a softer, relevance-led nudge. Single nudge mechanic
-(refund + quality signal combined); the pre-acceptance-inspection driver is a deferred
-backlog item.
+(refund + quality signal combined, plus a numbers-free peer `social_proof_line` — Q15's
+tied-third driver; all three are lines in one nudge, not separate mechanics). The
+pre-acceptance-inspection driver and the checkout cart-filler micro-trial (Category-
+Expansion playbook, Pillar 4 — aimed at the low-intent segment this MVP does not target)
+are deferred backlog items; see `docs/implementation-plan.md` Phase 5.
 
 ## Run locally
 
