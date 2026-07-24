@@ -20,7 +20,8 @@ import gradio as gr
 from dotenv import load_dotenv
 
 from agent import generate_nudge
-from friction_matching import load_profiles, load_themes, match_profile_to_theme
+from friction_matching import (adjacency_scores, load_profiles, load_themes,
+                               match_profile_to_theme, rank_suggestable_categories)
 from auto_targeting import eligibility_detail, eligible_profiles, to_notification
 from cart_filler import FREE_DELIVERY_THRESHOLD, suggest_fillers
 
@@ -206,7 +207,62 @@ def profile_html(p, theme, reason):
 </div>"""
 
 
-def reasoning_html(theme, r=None):
+def alternatives_html(p, r=None):
+    """The design's 'Also considered — ranked' panel, wired to the REAL deterministic
+    ranker (friction_matching.rank_suggestable_categories + adjacency_scores).
+
+    The imported mockup carried invented 0-1 scores (0.88 / 0.61 / 0.44) that read as
+    model confidence. These are the actual integer adjacency weights instead, shown in
+    the order the agent received the candidate list, with the agent's real pick marked.
+    Nothing here is estimated.
+    """
+    pool = rank_suggestable_categories(p)
+    scores = adjacency_scores(p)
+    if not pool:
+        return ""
+    picked = (r or {}).get("suggested_category", "")
+    picked_n = str(picked).lower().strip()
+    top = max(scores[c] for c in pool) or 1
+    best = max(pool, key=lambda c: scores[c])
+
+    rows = ""
+    for c in pool:
+        is_pick = picked_n and c.lower() == picked_n
+        if is_pick:
+            tag, tag_css = "SELECTED", ("color:#16130A;background:#F8CD1B")
+        elif c == best and picked_n:
+            tag, tag_css = "RANKER #1", ("color:#F0E4B4;background:rgba(248,205,27,.16)")
+        else:
+            tag, tag_css = "considered", ("color:#8E8F86;background:rgba(255,255,255,.06)")
+        rows += f"""
+        <div style="display:flex;align-items:center;gap:11px">
+          <div style="font-size:12.5px;font-weight:{'800' if is_pick else '600'};
+            color:{'#F8CD1B' if is_pick else '#B7B8AE'};width:148px;flex:none;white-space:nowrap;
+            overflow:hidden;text-overflow:ellipsis">{esc(c)}</div>
+          <div style="flex:1;height:6px;background:rgba(255,255,255,.09);border-radius:99px;overflow:hidden">
+            <div style="height:100%;border-radius:99px;width:{round(100*scores[c]/top)}%;
+              background:{'#F8CD1B' if is_pick else 'rgba(255,255,255,.28)'};
+              animation:barGrow .7s cubic-bezier(.2,.7,.3,1)"></div></div>
+          <div style="font-size:12px;font-weight:700;color:#B7B8AE;width:16px;text-align:right;flex:none">{scores[c]}</div>
+          <div style="font-size:9.5px;font-weight:800;letter-spacing:.05em;{tag_css};padding:3px 7px;
+            border-radius:5px;width:78px;text-align:center;flex:none">{tag}</div>
+        </div>"""
+
+    foot = ("Adjacency weight from the user's existing basket — a deterministic integer, "
+            "not a confidence score. Order is the candidate list handed to the agent "
+            "(equally-adjacent candidates are rotated per user for variety).")
+    return f"""
+    <div style="display:flex;gap:13px">
+      <div class="nb-ic">⚖️</div>
+      <div style="flex:1;min-width:0">
+        <div class="h" style="margin-bottom:9px">Also considered — ranked</div>
+        <div style="display:flex;flex-direction:column;gap:7px">{rows}</div>
+        <div style="font-size:11px;line-height:1.5;color:#8E8F86;margin-top:9px">{foot}</div>
+      </div>
+    </div>"""
+
+
+def reasoning_html(theme, r=None, p=None):
     share = theme.get("evidence_share")
     pct = round(100 * share) if share else None
     # Real Part 1 evidence share — NOT an LLM-invented confidence score.
@@ -221,7 +277,11 @@ def reasoning_html(theme, r=None):
         meter, bar = ('<div style="font-size:12px;font-weight:700;color:#C9CABF">out of primary scope</div>',
                       '<div style="height:20px"></div>')
 
+    alts = alternatives_html(p, r) if p else ""
+
     if not r:
+        pre = (f'<div style="margin-top:18px;padding-top:18px;'
+               f'border-top:1px solid rgba(255,255,255,.1)">{alts}</div>') if alts else ""
         return f"""
 <div class="nb-dark">
   <div style="display:flex;align-items:center;gap:9px">
@@ -229,8 +289,9 @@ def reasoning_html(theme, r=None):
     <div style="flex:1;height:1px;background:rgba(255,255,255,.12)"></div>{meter}</div>
   {bar}
   <div style="font-size:13px;line-height:1.55;color:#B7B8AE">Press <b style="color:#F8CD1B">Generate nudge</b>
-    to run the Groq agent for this user. The matched theme above is already resolved
-    deterministically — no LLM involved in matching.</div>
+    to run the Groq agent for this user. The matched theme above and the candidate ranking
+    below are already resolved deterministically — no LLM involved in either.</div>
+  {pre}
 </div>"""
 
     drivers = [("Refund guarantee", r.get("refund_line", "")),
@@ -267,6 +328,7 @@ def reasoning_html(theme, r=None):
     <div style="display:flex;gap:13px"><div class="nb-ic">🧭</div>
       <div><div class="h">Why this category</div>
       <div style="font-size:13px;line-height:1.55;color:#CFD0C6">{esc(r.get('why_category'))}</div></div></div>
+    {alts}
     <div>
       <div style="display:flex;gap:13px;margin-bottom:10px"><div class="nb-ic">🛡️</div>
         <div class="h" style="padding-top:6px">Trust drivers, ranked (research-led)</div></div>
@@ -277,7 +339,105 @@ def reasoning_html(theme, r=None):
 </div>"""
 
 
-def _phone_shell(p, inner):
+def measurement_plan_html(r=None):
+    """The design's 'Holdout test' panel — rebuilt as an experiment DESIGN, not results.
+
+    The imported mockup shipped fabricated outcomes (+34% lift, 8.4% vs 11.3% converted,
+    n=2,400, p<0.05, "simulated on Part 2 segment data"). No such experiment was ever run,
+    so shipping those numbers would invent evidence — the exact failure CLAUDE.md forbids.
+    What is real and worth showing is how the nudge WOULD be validated: the arms, the
+    primary metric (the PRD's own growth goal) and the guardrail. No figures, and the
+    "not yet run" state is stated in the panel rather than implied.
+    """
+    variant = esc(r.get("headline")) if r else "— generate a nudge to populate variant B —"
+    arm = lambda tone, label, headline, note: f"""
+      <div style="border:{'1.5px solid #F8CD1B' if tone else '1px solid #EDEEE8'};border-radius:14px;
+        padding:14px;background:{'#FFFCF0' if tone else '#FAFBF8'}">
+        <div style="display:flex;align-items:center;gap:7px;margin-bottom:9px">
+          <span style="width:8px;height:8px;border-radius:50%;background:{'#E7B400' if tone else '#C4C5B9'}"></span>
+          <span style="font-size:11.5px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;
+            color:{'#7A6100' if tone else '#6B6B60'}">{label}</span></div>
+        <div style="font-size:13.5px;font-weight:700;line-height:1.35;margin-bottom:6px;
+          color:{'#16130A' if tone else '#44443B'}">{headline}</div>
+        <div style="font-size:12px;color:{'#7A6836' if tone else '#6B6B60'};line-height:1.45">{note}</div>
+      </div>"""
+
+    return f"""
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;
+  flex-wrap:wrap;gap:10px">
+  <div><div class="nb-eyebrow">Measurement plan</div>
+    <div style="font-size:16px;font-weight:800;margin-top:3px;color:#16130A">How we would prove the
+      nudge works</div></div>
+  <div class="nb-pill" style="background:#F3F4F0;border:1px solid #DEDFD7;color:#5A5A50">
+    <span class="nb-dot" style="background:#9A9A8C"></span>Proposed · not yet run</div>
+</div>
+<div style="font-size:12.5px;line-height:1.55;color:#63635A;margin-bottom:14px">
+  Design only. The MVP has not been shipped to real users, so there are
+  <b style="color:#16130A">no conversion, lift or significance figures</b> — any number here
+  would be invented.</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+  {arm(False, "Control · Variant A", "“Flat discount on your next order”",
+       "Price-led and category-agnostic — the status quo nudge. Expected to deepen the existing basket rather than open a new category.")}
+  {arm(True, "Agent · Variant B", f"“{variant}”",
+       "Trust-led: names the user's own friction, leads with the two research-ranked drivers, offer last.")}
+</div>
+<div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:14px">
+  <div style="flex:1;min-width:200px;background:#F7F8F5;border-radius:12px;padding:11px 13px">
+    <div class="nb-tile-k">Primary metric</div>
+    <div style="font-size:13px;font-weight:700;color:#16130A;line-height:1.4">% of MAU purchasing from
+      ≥1 new category that month</div></div>
+  <div style="flex:1;min-width:200px;background:#F7F8F5;border-radius:12px;padding:11px 13px">
+    <div class="nb-tile-k">Guardrail</div>
+    <div style="font-size:13px;font-weight:700;color:#16130A;line-height:1.4">No fall in existing-category
+      order frequency</div></div>
+</div>
+<div style="margin-top:13px;padding-top:12px;border-top:1px solid #F0F1EC;font-size:11.5px;
+  font-weight:600;color:#6B6B60;line-height:1.55">
+  Scope caveat carried from the problem statement: this can only move the trust-driven share of
+  category stagnation, not the low-intent share — so the read-out would be split by whether the
+  user had a quality incident.</div>"""
+
+
+def instrumentation_html():
+    """The design's 'Outcome tracker' — rebuilt as the event spec, not live telemetry.
+
+    The mockup showed a 'live · 7d' funnel (100 / 64 / 19 / 11.3%) and a 21-day repurchase
+    stat. No user has ever received this nudge, so those percentages are fabricated. The
+    honest artifact is the event ladder the MVP would emit; the stage names are a real
+    design decision, the numbers do not exist yet.
+    """
+    stages = [
+        ("nudge_delivered", "Nudge rendered in the user's feed"),
+        ("card_viewed", "Card enters viewport for ≥1s"),
+        ("added_to_cart", "Suggested-category item added"),
+        ("first_category_order", "Order placed in a category never bought before"),
+    ]
+    rows = "".join(f"""
+      <div style="display:flex;gap:10px;align-items:flex-start">
+        <div style="width:19px;height:19px;border-radius:6px;background:#F0F1EC;color:#6B6B60;
+          font-size:10.5px;font-weight:800;display:flex;align-items:center;justify-content:center;
+          flex:none;margin-top:1px">{i}</div>
+        <div style="min-width:0">
+          <div style="font-size:12.5px;font-weight:700;color:#16130A;font-family:monospace">{esc(k)}</div>
+          <div style="font-size:11.5px;color:#6B6B60;line-height:1.45">{esc(v)}</div></div>
+      </div>""" for i, (k, v) in enumerate(stages, 1))
+    return f"""
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+  <div class="nb-eyebrow">Instrumentation</div>
+  <div style="font-size:11px;font-weight:700;color:#5A5A50;background:#F3F4F0;border:1px solid #DEDFD7;
+    padding:3px 9px;border-radius:99px">no live data</div>
+</div>
+<div style="display:flex;flex-direction:column;gap:10px">{rows}</div>
+<div style="margin-top:13px;padding-top:12px;border-top:1px solid #F0F1EC;font-size:11.5px;
+  font-weight:600;color:#6B6B60;line-height:1.55">
+  The four events the MVP would emit, in order. Deliberately shown without percentages — the
+  nudge has not run against real users, so a funnel here would be fabricated.</div>"""
+
+
+def _phone_shell(p, inner, hint=None):
+    # Search placeholder shows what this shopper actually habitually buys (real profile
+    # field), so the mock phone chrome carries no invented query.
+    hint = hint or (p.get("buys_display") or ["groceries"])[0].lower()
     return f"""
 <div class="nb-phonewrap">
   <div class="nb-eyebrow">What the shopper sees</div>
@@ -292,6 +452,8 @@ def _phone_shell(p, inner):
         <div style="width:38px;height:38px;border-radius:50%;background:#16130A;color:#F8CD1B;
           display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px">{esc(p['initials'])}</div>
       </div>
+      <div style="margin-top:12px;background:#fff;border-radius:11px;padding:10px 13px;font-size:13px;
+        color:#6B6B60;font-weight:500;display:flex;align-items:center;gap:8px">🔍 Search “{esc(hint)}”</div>
     </div>
     <div style="padding:16px 15px 22px;background:#F7F8F5;min-height:340px">{inner}</div>
   </div></div>
@@ -352,7 +514,7 @@ def phone_html(p, r=None):
 </div>
 <div style="text-align:center;font-size:11px;color:#6B6B60;margin-top:16px;font-weight:600">
   Reorder your usuals below ↓</div>"""
-    return _phone_shell(p, inner)
+    return _phone_shell(p, inner, hint=r.get("suggested_category"))
 
 
 TOP = """
@@ -475,7 +637,8 @@ def on_select(uid):
     p = BY_ID[uid]
     theme, reason = match_profile_to_theme(p, THEMES)
     chips = [gr.update(variant="primary" if x["user_id"] == uid else "secondary") for x in PROFILES]
-    return [uid, profile_html(p, theme, reason), reasoning_html(theme), phone_html(p)] + chips
+    return [uid, profile_html(p, theme, reason), reasoning_html(theme, p=p),
+            phone_html(p), measurement_plan_html()] + chips
 
 
 def on_generate(uid):
@@ -485,13 +648,14 @@ def on_generate(uid):
         err = ('<div class="nb-dark"><div class="k">Error</div>'
                '<div style="margin-top:8px;font-size:13px">GROQ_API_KEY is not configured on the '
                'server. Add it in the Space Settings → Variables and secrets.</div></div>')
-        return err, phone_html(p)
+        return err, phone_html(p), measurement_plan_html()
     try:
         r = generate_nudge(p, theme, reason)   # REAL Groq call
     except Exception as e:  # noqa: BLE001
         return (f'<div class="nb-dark"><div class="k">Error</div>'
-                f'<div style="margin-top:8px;font-size:13px">{esc(e)}</div></div>', phone_html(p))
-    return reasoning_html(theme, r), phone_html(p, r)
+                f'<div style="margin-top:8px;font-size:13px">{esc(e)}</div></div>',
+                phone_html(p), measurement_plan_html())
+    return reasoning_html(theme, r, p=p), phone_html(p, r), measurement_plan_html(r)
 
 
 with gr.Blocks(title="Blinkit Category Nudge Agent", css=CSS, head=FONT_LINK,
@@ -521,9 +685,13 @@ with gr.Blocks(title="Blinkit Category Nudge Agent", css=CSS, head=FONT_LINK,
                     with gr.Column(elem_classes="nb-card"):
                         prof_out = gr.HTML(profile_html(_p0, _t0, _r0))
                         gen = gr.Button("⚡ Generate nudge", elem_id="gen")
-                    reason_out = gr.HTML(reasoning_html(_t0))
+                    reason_out = gr.HTML(reasoning_html(_t0, p=_p0))
+                    with gr.Column(elem_classes="nb-card"):
+                        measure_out = gr.HTML(measurement_plan_html())
                 with gr.Column(scale=85):
                     phone_out = gr.HTML(phone_html(_p0))
+                    with gr.Column(elem_classes="nb-card", elem_id="instr"):
+                        gr.HTML(instrumentation_html())
 
         with gr.Tab("Auto-nudge queue"):
             with gr.Row(elem_classes="nb-cols"):
@@ -557,8 +725,8 @@ with gr.Blocks(title="Blinkit Category Nudge Agent", css=CSS, head=FONT_LINK,
 
     for btn, p in zip(chip_btns, PROFILES):
         btn.click(lambda uid=p["user_id"]: on_select(uid),
-                  outputs=[sel, prof_out, reason_out, phone_out] + chip_btns)
-    gen.click(on_generate, inputs=sel, outputs=[reason_out, phone_out])
+                  outputs=[sel, prof_out, reason_out, phone_out, measure_out] + chip_btns)
+    gen.click(on_generate, inputs=sel, outputs=[reason_out, phone_out, measure_out])
     run_batch.click(on_run_auto_batch, outputs=auto_out)
     cart_user.change(cart_filler_html, inputs=[cart_user, cart_amt], outputs=cart_out)
     cart_amt.change(cart_filler_html, inputs=[cart_user, cart_amt], outputs=cart_out)

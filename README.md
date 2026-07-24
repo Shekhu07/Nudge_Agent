@@ -50,6 +50,22 @@ mockup of what the shopper sees. The design *chrome* is reproduced faithfully; t
 | Personas invented in the mockup | The project's **existing 8 synthetic profiles**, extended with display-only fields (name, tenure, locality…), all still labelled SYNTHETIC in `data/synthetic_profiles.json` |
 | Social-proof with invented counts ("Over 1,200 buyers rated 5/5", from the external expansion playbook) | **Numbers-free `social_proof_line`** — qualitative peer reassurance generated per user, forbidden by the prompt from stating any figure/rating/count; empty for out-of-scope users |
 
+### Second import — "Blinkit Nudge Agent" (2026-07-24)
+
+A later Claude Design pass added three panels. One was a genuine capability; two carried
+fabricated experiment results and were rebuilt rather than shipped:
+
+| Mockup | Shipped |
+|---|---|
+| "Also considered — ranked" with invented 0–1 scores (0.88 / 0.61 / 0.44) that read as model confidence | **The real deterministic ranker** — integer adjacency weights from `friction_matching.adjacency_scores()`, shown in the exact candidate order the agent received, with the agent's actual pick marked `SELECTED` |
+| "Holdout test": **+34% first-order lift**, 8.4% → 11.3% converted, n = 2,400/arm, p < 0.05, "simulated on Part 2 segment data" | **Rebuilt as a measurement *plan*.** No experiment has ever been run, so every figure was removed. The panel now states the arms, the primary metric (the PRD's own %MAU-new-category goal) and the guardrail, carries a "Proposed · not yet run" pill, and says in-panel that any number there would be invented |
+| "Outcome tracker": live 7-day funnel (100 / 64 / 19 / 11.3%) and "41% repurchased within 21 days" | **Rebuilt as the instrumentation spec.** No user has received this nudge. The four event names are a real design decision and are listed in order; the percentages are deliberately absent, with a "no live data" label |
+| Phone search placeholder (invented query per persona) | Derived from the profile's own `buys_display`, then from the agent's suggested category after generation |
+
+The rule applied is CLAUDE.md's: implement the design chrome, never its numbers. Fabricated
+A/B results are the most dangerous variant of that failure because they imply the MVP was
+validated — it has not been.
+
 Matching remains **deterministic** (no LLM), and the honest out-of-scope path is surfaced
 in the UI: a low-intent user with no incident gets an explicit banner saying the trust fix
 does not apply to them, per `docs/problem_statement.md` §6.

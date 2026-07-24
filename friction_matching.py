@@ -42,6 +42,22 @@ def _norm(cat):
     return cat.lower().strip().replace(" & ", "_").replace(" ", "_")
 
 
+def adjacency_scores(profile):
+    """Raw adjacency weight per suggestable category for this profile.
+
+    These are the real, deterministic weights the ranker sums out of CATEGORY_ADJACENCY —
+    small integers, NOT probabilities or confidence scores. The operator console renders
+    them verbatim so the ranking it shows is the ranking the agent was actually given.
+    """
+    existing = {_norm(c) for c in profile.get("top_categories", [])}
+    scores = {c: 0 for c in SUGGESTABLE_CATEGORIES}
+    for ecat in existing:
+        for scat, w in CATEGORY_ADJACENCY.get(ecat, {}).items():
+            if scat in scores:
+                scores[scat] += w
+    return scores
+
+
 def rank_suggestable_categories(profile, top_n=4):
     """Return the top_n best-fit suggestable categories for a profile, ranked by
     adjacency to its existing basket and excluding any overlap.
@@ -53,11 +69,7 @@ def rank_suggestable_categories(profile, top_n=4):
     pick. Stable per user_id, so results are reproducible.
     """
     existing = {_norm(c) for c in profile.get("top_categories", [])}
-    scores = {c: 0 for c in SUGGESTABLE_CATEGORIES}
-    for ecat in existing:
-        for scat, w in CATEGORY_ADJACENCY.get(ecat, {}).items():
-            if scat in scores:
-                scores[scat] += w
+    scores = adjacency_scores(profile)
     ranked = [c for c in sorted(SUGGESTABLE_CATEGORIES, key=lambda c: (-scores[c], c))
               if _norm(c) not in existing]
     pool = ranked[:top_n] or [c for c in SUGGESTABLE_CATEGORIES if _norm(c) not in existing]
