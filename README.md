@@ -58,6 +58,16 @@ does not apply to them, per `docs/problem_statement.md` §6.
   A FastAPI + HTML variant with a JSON `/api/nudge` endpoint is also kept in
   `app_fastapi.py` for local/API use and non-HF hosts (Render etc.).
 
+The Gradio app has **three tabs**, all over the same synthetic profiles:
+1. **Operator console** — pick a user → deterministic friction match → live Groq nudge.
+2. **Auto-nudge queue** (`auto_targeting.py`) — the cohort that would be *auto-nudged*
+   on a schedule: `order_frequency = Weekly AND tenure > 6mo`. "Run scheduled batch"
+   generates each eligible user's notification live. **Simulated — no real push is sent.**
+3. **Checkout cart-filler** (`cart_filler.py`, playbook Pillar 4) — when a cart is under the
+   ₹199 free-delivery threshold, offers a low-cost item from a **never-bought** category as a
+   zero-friction trial. Deterministic (no LLM); `FILLER_CATALOG` is synthetic, prices
+   illustrative. Aimed at the low-intent segment the push nudge skips.
+
 ## Scope (honest boundaries)
 
 Addresses only the ~50% of category stagnation that is quality/trust-driven, per

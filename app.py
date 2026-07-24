@@ -21,6 +21,8 @@ from dotenv import load_dotenv
 
 from agent import generate_nudge
 from friction_matching import load_profiles, load_themes, match_profile_to_theme
+from auto_targeting import eligibility_detail, eligible_profiles, to_notification
+from cart_filler import FREE_DELIVERY_THRESHOLD, suggest_fillers
 
 load_dotenv()
 
@@ -116,7 +118,7 @@ footer,.footer,.show-api,.built-with,.settings{display:none !important}
   box-shadow:0 2px 10px rgba(248,205,27,.25) !important}
 
 /* generate button */
-#gen{width:100% !important;border:none !important;font-size:15px !important;font-weight:800 !important;
+#gen, #genbatch{width:100% !important;border:none !important;font-size:15px !important;font-weight:800 !important;
   padding:15px !important;border-radius:14px !important;color:#16130A !important;
   background:#F8CD1B !important;box-shadow:0 6px 18px rgba(248,205,27,.4) !important;
   margin-top:16px !important}
@@ -351,6 +353,105 @@ TOP = """
 </div>"""
 
 
+# ----------------------- Feature 1: auto-nudge queue -----------------------
+def auto_eligibility_html():
+    """Static cohort view: who the scheduled trigger would and wouldn't auto-nudge."""
+    rows = ""
+    for p in PROFILES:
+        ok, why = eligibility_detail(p)
+        badge = ("#1F9D55", "#EAF7EE", "✓ Auto-nudge") if ok else ("#9A8B00", "#FBF4CE", "· Skipped")
+        rows += (
+            f'<div style="display:flex;align-items:center;gap:12px;padding:10px 0;'
+            f'border-bottom:1px solid #EFEFE9">'
+            f'<div style="font-size:11px;font-weight:800;color:{badge[0]};background:{badge[1]};'
+            f'border-radius:20px;padding:4px 10px;white-space:nowrap">{badge[2]}</div>'
+            f'<div style="flex:1;min-width:0"><div style="font-size:13.5px;font-weight:700;color:#16130A">'
+            f'{esc(p["display_name"])} · <span style="color:#6B6B60;font-weight:600">{esc(p.get("order_frequency"))}, '
+            f'{esc(p.get("tenure"))}</span></div>'
+            f'<div style="font-size:12px;color:#6B6B60;margin-top:2px">{esc(why)}</div></div></div>')
+    n = len(eligible_profiles())
+    return (
+        '<div class="nb-eyebrow">Scheduled trigger · eligibility</div>'
+        '<div style="font-size:13px;color:#44443B;margin:6px 0 14px;line-height:1.5">Rule: '
+        '<b>order_frequency = Weekly</b> AND <b>tenure &gt; 6 months</b>. Habitual, established '
+        'buyers whose basket has settled — the auto-nudge cohort.</div>'
+        f'{rows}'
+        f'<div style="margin-top:14px;font-size:12.5px;font-weight:700;color:#16130A">'
+        f'{n} of {len(PROFILES)} synthetic users qualify.</div>')
+
+
+def _notification_card(p, notif):
+    return (
+        '<div style="background:#fff;border:1px solid #EFEFE9;border-radius:16px;padding:14px 15px;'
+        'box-shadow:0 6px 22px rgba(0,0,0,.06);margin-bottom:12px">'
+        '<div style="display:flex;align-items:center;gap:9px;margin-bottom:8px">'
+        '<div style="width:26px;height:26px;border-radius:7px;background:#F8CD1B;display:flex;'
+        f'align-items:center;justify-content:center;font-size:15px">{notif.get("emoji","🛒")}</div>'
+        '<div style="font-size:11px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;'
+        f'color:#6F5700">Blinkit · now · to {esc(p["display_name"])}</div></div>'
+        f'<div style="font-size:14px;font-weight:800;color:#16130A;line-height:1.25">{esc(notif.get("title"))}</div>'
+        f'<div style="font-size:12.5px;color:#44443B;line-height:1.5;margin-top:5px">{esc(notif.get("body"))}</div>'
+        f'<div style="margin-top:9px;display:inline-block;font-size:11px;font-weight:700;color:#2551C6;'
+        f'background:#EFF4FF;border-radius:20px;padding:3px 10px">New category · {esc(notif.get("category"))}</div>'
+        '</div>')
+
+
+def on_run_auto_batch():
+    if "GROQ_API_KEY" not in os.environ:
+        return ('<div class="nb-dark"><div class="k">Error</div><div style="margin-top:8px;font-size:13px">'
+                'GROQ_API_KEY is not configured on the server.</div></div>')
+    cards = ""
+    for p in eligible_profiles():
+        theme, reason = match_profile_to_theme(p, THEMES)
+        try:
+            notif = to_notification(generate_nudge(p, theme, reason))
+        except Exception as e:  # noqa: BLE001
+            cards += f'<div style="color:#B00">Failed for {esc(p["display_name"])}: {esc(e)}</div>'
+            continue
+        cards += _notification_card(p, notif)
+    return ('<div class="nb-eyebrow" style="margin-bottom:10px">Generated notifications · '
+            'live Groq</div>' + cards +
+            '<div style="margin-top:8px;font-size:11.5px;color:#6B6B60">Simulated scheduled send — '
+            'no real push is dispatched. Copy generated live per user.</div>')
+
+
+# ----------------------- Feature 2: checkout cart-filler -----------------------
+def cart_filler_html(uid, cart_total):
+    p = BY_ID[uid]
+    cart_total = int(cart_total)
+    res = suggest_fillers(p, cart_total)
+    thr = res["threshold"]
+    pct = min(100, int(cart_total / thr * 100)) if thr else 100
+    bar = (f'<div style="height:9px;background:#EFEFE9;border-radius:6px;overflow:hidden;margin:9px 0 4px">'
+           f'<div style="height:100%;width:{pct}%;background:#F8CD1B"></div></div>')
+    header = (
+        '<div class="nb-eyebrow">Checkout · free-delivery unlock</div>'
+        f'<div style="font-size:13px;color:#6B6B60;margin:6px 0 2px">Cart ₹{cart_total} of ₹{thr} threshold '
+        f'· <b style="color:#16130A">{esc(p["display_name"])}</b></div>{bar}')
+    if res["qualifies"]:
+        return (header + '<div style="margin-top:12px;font-size:13.5px;font-weight:700;color:#146634">'
+                '✓ Already over the threshold — free delivery unlocked, no filler needed.</div>')
+    items = ""
+    for it in res["items"]:
+        badge = ('<div style="font-size:10.5px;font-weight:800;color:#146634;background:#EAF7EE;'
+                 'border-radius:20px;padding:3px 9px;white-space:nowrap">Unlocks free delivery</div>'
+                 if it["covers_gap"] else '')
+        items += (
+            '<div style="display:flex;align-items:center;gap:12px;background:#fff;border:1px solid #EFEFE9;'
+            'border-radius:13px;padding:11px 13px;margin-bottom:9px">'
+            '<div style="width:44px;height:44px;border-radius:10px;background:#FFF3D6;display:flex;'
+            'align-items:center;justify-content:center;font-size:20px;flex:none">🛒</div>'
+            '<div style="flex:1;min-width:0"><div style="font-size:13.5px;font-weight:700;color:#16130A">'
+            f'{esc(it["name"])} · <span style="color:#6B6B60">₹{it["price"]}</span></div>'
+            f'<div style="font-size:11.5px;color:#2551C6;font-weight:600;margin-top:3px">'
+            f'First time in {esc(it["category"])}</div></div>{badge}</div>')
+    tip = (f'<div style="font-size:13.5px;font-weight:700;color:#16130A;margin:12px 0 10px">'
+           f'Add ₹{res["gap"]} more for FREE delivery — try a new category:</div>')
+    return (header + tip + items +
+            '<div style="margin-top:6px;font-size:11.5px;color:#6B6B60">Every item is from a category this '
+            'user has never bought. Synthetic demo catalog; prices illustrative.</div>')
+
+
 # ----------------------------- app -----------------------------
 def on_select(uid):
     p = BY_ID[uid]
@@ -383,31 +484,66 @@ with gr.Blocks(title="Blinkit Category Nudge Agent", css=CSS, head=FONT_LINK,
     _p0 = PROFILES[0]
     _t0, _r0 = match_profile_to_theme(_p0, THEMES)
 
-    with gr.Row(elem_classes="nb-cols"):
-        with gr.Column(scale=115):
-            with gr.Column(elem_classes="nb-card"):
-                gr.HTML('<div style="display:flex;align-items:center;justify-content:space-between;'
-                        'margin-bottom:14px"><div class="nb-eyebrow">Step 1 · Pick a synthetic user</div>'
-                        '<div style="font-size:12px;font-weight:600;color:#6B6B60">Part 2 “stuck segment”</div></div>')
-                chip_btns = []
-                for i in range(0, len(PROFILES), 2):
-                    with gr.Row():
-                        for p in PROFILES[i:i + 2]:
-                            chip_btns.append(gr.Button(
-                                p["display_name"], elem_id=f"chip-{p['user_id']}",
-                                elem_classes="nb-chip", size="sm",
-                                variant="primary" if p is PROFILES[0] else "secondary"))
-            with gr.Column(elem_classes="nb-card"):
-                prof_out = gr.HTML(profile_html(_p0, _t0, _r0))
-                gen = gr.Button("⚡ Generate nudge", elem_id="gen")
-            reason_out = gr.HTML(reasoning_html(_t0))
-        with gr.Column(scale=85):
-            phone_out = gr.HTML(phone_html(_p0))
+    with gr.Tabs():
+        with gr.Tab("Operator console"):
+            with gr.Row(elem_classes="nb-cols"):
+                with gr.Column(scale=115):
+                    with gr.Column(elem_classes="nb-card"):
+                        gr.HTML('<div style="display:flex;align-items:center;justify-content:space-between;'
+                                'margin-bottom:14px"><div class="nb-eyebrow">Step 1 · Pick a synthetic user</div>'
+                                '<div style="font-size:12px;font-weight:600;color:#6B6B60">Part 2 “stuck segment”</div></div>')
+                        chip_btns = []
+                        for i in range(0, len(PROFILES), 2):
+                            with gr.Row():
+                                for p in PROFILES[i:i + 2]:
+                                    chip_btns.append(gr.Button(
+                                        p["display_name"], elem_id=f"chip-{p['user_id']}",
+                                        elem_classes="nb-chip", size="sm",
+                                        variant="primary" if p is PROFILES[0] else "secondary"))
+                    with gr.Column(elem_classes="nb-card"):
+                        prof_out = gr.HTML(profile_html(_p0, _t0, _r0))
+                        gen = gr.Button("⚡ Generate nudge", elem_id="gen")
+                    reason_out = gr.HTML(reasoning_html(_t0))
+                with gr.Column(scale=85):
+                    phone_out = gr.HTML(phone_html(_p0))
+
+        with gr.Tab("Auto-nudge queue"):
+            with gr.Row(elem_classes="nb-cols"):
+                with gr.Column(scale=110):
+                    with gr.Column(elem_classes="nb-card"):
+                        gr.HTML(auto_eligibility_html())
+                        run_batch = gr.Button("▶ Run scheduled batch", elem_id="genbatch")
+                with gr.Column(scale=90):
+                    with gr.Column(elem_classes="nb-card"):
+                        auto_out = gr.HTML('<div style="font-size:13px;color:#6B6B60;line-height:1.55">'
+                                           'Press <b style="color:#16130A">Run scheduled batch</b> to generate '
+                                           'the notification each eligible user would receive.</div>')
+
+        with gr.Tab("Checkout cart-filler"):
+            with gr.Row(elem_classes="nb-cols"):
+                with gr.Column(scale=110):
+                    with gr.Column(elem_classes="nb-card"):
+                        gr.HTML('<div class="nb-eyebrow">Simulate a checkout</div>'
+                                '<div style="font-size:13px;color:#44443B;margin:6px 0 12px;line-height:1.5">'
+                                'Pick a user and a cart total. If they are short of the ₹'
+                                f'{FREE_DELIVERY_THRESHOLD} free-delivery threshold, we offer a low-cost item '
+                                'from a category they have <b>never bought</b> — a zero-friction trial.</div>')
+                        cart_user = gr.Dropdown(
+                            choices=[(p["display_name"], p["user_id"]) for p in PROFILES],
+                            value=PROFILES[0]["user_id"], label="User")
+                        cart_amt = gr.Slider(0, FREE_DELIVERY_THRESHOLD + 60, value=150, step=5,
+                                             label="Cart total (₹)")
+                with gr.Column(scale=90):
+                    with gr.Column(elem_classes="nb-card"):
+                        cart_out = gr.HTML(cart_filler_html(PROFILES[0]["user_id"], 150))
 
     for btn, p in zip(chip_btns, PROFILES):
         btn.click(lambda uid=p["user_id"]: on_select(uid),
                   outputs=[sel, prof_out, reason_out, phone_out] + chip_btns)
     gen.click(on_generate, inputs=sel, outputs=[reason_out, phone_out])
+    run_batch.click(on_run_auto_batch, outputs=auto_out)
+    cart_user.change(cart_filler_html, inputs=[cart_user, cart_amt], outputs=cart_out)
+    cart_amt.change(cart_filler_html, inputs=[cart_user, cart_amt], outputs=cart_out)
 
 
 if __name__ == "__main__":
