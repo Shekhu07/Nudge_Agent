@@ -66,6 +66,27 @@ The rule applied is CLAUDE.md's: implement the design chrome, never its numbers.
 A/B results are the most dangerous variant of that failure because they imply the MVP was
 validated — it has not been.
 
+### Third import — the same design extended to all three tabs (2026-07-24)
+
+A later revision of the same Claude Design file added full treatments for the **Auto-nudge
+queue** and **Checkout cart-filler** tabs. Tab 1's data was unchanged (same fabricated A/B
+block, already handled above). The two new tabs are almost entirely computable from real
+project logic, so nearly all of it ships as-is:
+
+| Mockup | Shipped |
+|---|---|
+| Auto-queue: eligibility gate, a 3-stage funnel and in-queue / held-back lists | **Real throughout** — every count runs the live `auto_targeting.eligibility_detail()` gate over the 8 synthetic profiles (8 → 5 cadence-pass → 5 queued at the default 6-month threshold), and each held-back row shows the rule's own reason string |
+| Auto-queue: interactive **minimum-tenure slider** (3–12 months) | **Wired to the real gate.** `is_auto_eligible()` already took a `min_tenure_months` argument, so dragging it genuinely re-runs the rule (12 months → 3 queued, not an animation) |
+| Auto-queue: lock-screen push preview | Implemented; each payload is a **live Groq generation** per queued user via `to_notification()`. The mockup's own "simulation only — no push leaves this demo" disclaimer is kept |
+| Cart-filler: checkout screen with invented line items and per-item prices | Cart shows the shopper's **own habitual categories** (real `buys_display`) with a single subtotal, rather than inventing products they never bought. Catalog/threshold/fee labelled illustrative |
+| Cart-filler: "Delivery saved ₹35" with no backing value | `DELIVERY_FEE = 35` added to `cart_filler.py` as an **explicitly illustrative constant**, documented alongside the existing illustrative threshold — a stated demo value, not a claimed Blinkit fee |
+| Cart-filler: candidate pool "ranked by basket adjacency" | Real `never_bought_categories()` with the actual adjacency weights. **Display sorted by weight** so the label is literally true — the raw ranker output carries a per-user rotation and is not monotonic |
+| Cart-filler: "How the filler is chosen" rules | Rewritten to describe what `suggest_fillers()` actually does (never-bought only → adjacency-ranked → gap-covering first → one per category) |
+
+Net: on these two tabs the design needed almost no substitution, because the underlying
+layers were already deterministic and real. The only invented figure was the delivery fee,
+which is now a labelled constant.
+
 Matching remains **deterministic** (no LLM), and the honest out-of-scope path is surfaced
 in the UI: a low-intent user with no incident gets an explicit banner saying the trust fix
 does not apply to them, per `docs/problem_statement.md` §6.

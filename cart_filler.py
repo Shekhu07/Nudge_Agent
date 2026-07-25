@@ -14,6 +14,11 @@ from friction_matching import SUGGESTABLE_CATEGORIES, _norm, rank_suggestable_ca
 # Free-delivery threshold (illustrative). Real Blinkit thresholds vary by city/time.
 FREE_DELIVERY_THRESHOLD = 199
 
+# Delivery fee waived when the threshold is met (illustrative, like the threshold and the
+# catalog prices). Surfaced in the UI as the "delivery saved" figure — it is a stated demo
+# constant, not a measured or claimed Blinkit fee.
+DELIVERY_FEE = 35
+
 # SYNTHETIC low-cost filler items per suggestable category. Prices are illustrative.
 FILLER_CATALOG = {
     "home & cleaning":        [{"name": "Stainless Steel Cleaner", "price": 65},

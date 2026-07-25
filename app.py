@@ -22,8 +22,10 @@ from dotenv import load_dotenv
 from agent import generate_nudge
 from friction_matching import (adjacency_scores, load_profiles, load_themes,
                                match_profile_to_theme, rank_suggestable_categories)
-from auto_targeting import eligibility_detail, eligible_profiles, to_notification
-from cart_filler import FREE_DELIVERY_THRESHOLD, suggest_fillers
+from auto_targeting import (ELIGIBLE_FREQS, MIN_TENURE_MONTHS, eligibility_detail,
+                            eligible_profiles, parse_tenure_months, to_notification)
+from cart_filler import (DELIVERY_FEE, FREE_DELIVERY_THRESHOLD, never_bought_categories,
+                         suggest_fillers)
 
 load_dotenv()
 
@@ -135,6 +137,21 @@ footer,.footer,.show-api,.built-with,.settings{display:none !important}
 .gradio-container ul.options li:hover,
 .dark .gradio-container ul.options li.selected, .dark .gradio-container ul.options li.active,
 .dark .gradio-container ul.options li:hover{background:#FFFBEC !important;color:#16130A !important}
+
+/* range sliders — the chrome reset above strips Gradio's own track styling, so the
+   control renders as a near-invisible hairline. Restore an explicit track + thumb in
+   the brand palette (matches the design's styled range input). */
+.gradio-container input[type=range]{-webkit-appearance:none;appearance:none;height:6px;
+  border-radius:99px;background:#EDEEE8 !important;outline:none;width:100%;margin:6px 0}
+.gradio-container input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;
+  height:20px;border-radius:50%;background:#F8CD1B;border:3px solid #fff;
+  box-shadow:0 2px 8px rgba(0,0,0,.2);cursor:pointer}
+.gradio-container input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;
+  background:#F8CD1B;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.2);cursor:pointer}
+#tenwrap{margin:10px 0 4px !important}
+#tenwrap .wrap,#tenwrap .head{min-height:0 !important;margin-bottom:0 !important}
+.gradio-container label[data-testid="block-label"],.gradio-container .head span{
+  font-size:12px !important;font-weight:700 !important;color:#6B6B60 !important}
 
 /* generate button */
 #gen, #genbatch{width:100% !important;border:none !important;font-size:15px !important;font-weight:800 !important;
@@ -534,68 +551,346 @@ TOP = """
 
 
 # ----------------------- Feature 1: auto-nudge queue -----------------------
-def auto_eligibility_html():
-    """Static cohort view: who the scheduled trigger would and wouldn't auto-nudge."""
-    rows = ""
+def auto_gate_head(min_tenure=MIN_TENURE_MONTHS):
+    """The rule statement + live queued count. Rendered above the tenure slider so the
+    rule and the control that changes it sit together, as in the design."""
+    min_tenure = int(min_tenure)
+    n = len(eligible_profiles(min_tenure_months=min_tenure))
+    return f"""
+<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap">
+  <div style="flex:1;min-width:240px">
+    <div class="nb-eyebrow">Eligibility gate · deterministic</div>
+    <div style="font-size:14px;font-weight:700;color:#16130A;margin-top:5px;line-height:1.45">
+      Cadence is <span style="color:#146634">Daily or Weekly</span> &nbsp;AND&nbsp; tenure &gt;
+      <span style="color:#146634">{min_tenure} months</span></div>
+    <div style="font-size:12.5px;color:#6B6B60;margin-top:6px;line-height:1.5">Habitual, established
+      users whose basket has settled — the “stuck segment” from Part 2. No LLM in the gate; the copy
+      is still generated per user.</div>
+  </div>
+  <div style="text-align:right">
+    <div style="font-size:30px;font-weight:800;color:#16130A;line-height:1">{n}</div>
+    <div style="font-size:11px;font-weight:700;color:#6B6B60;text-transform:uppercase;
+      letter-spacing:.05em">queued</div>
+  </div>
+</div>"""
+
+
+def auto_eligibility_html(min_tenure=MIN_TENURE_MONTHS):
+    """Funnel + the in-queue / held-back split.
+
+    Every count is computed live from the 8 synthetic profiles through the real
+    deterministic gate (auto_targeting.eligibility_detail), so moving the tenure slider
+    re-runs the actual rule rather than animating a fixed number.
+    """
+    min_tenure = int(min_tenure)
+    incl, excl = [], []
     for p in PROFILES:
-        ok, why = eligibility_detail(p)
-        badge = ("#1F9D55", "#EAF7EE", "✓ Auto-nudge") if ok else ("#9A8B00", "#FBF4CE", "· Skipped")
-        rows += (
-            f'<div style="display:flex;align-items:center;gap:12px;padding:10px 0;'
-            f'border-bottom:1px solid #EFEFE9">'
-            f'<div style="font-size:11px;font-weight:800;color:{badge[0]};background:{badge[1]};'
-            f'border-radius:20px;padding:4px 10px;white-space:nowrap">{badge[2]}</div>'
-            f'<div style="flex:1;min-width:0"><div style="font-size:13.5px;font-weight:700;color:#16130A">'
-            f'{esc(p["display_name"])} · <span style="color:#6B6B60;font-weight:600">{esc(p.get("order_frequency"))}, '
-            f'{esc(p.get("tenure"))}</span></div>'
-            f'<div style="font-size:12px;color:#6B6B60;margin-top:2px">{esc(why)}</div></div></div>')
-    n = len(eligible_profiles())
-    return (
-        '<div class="nb-eyebrow">Scheduled trigger · eligibility</div>'
-        '<div style="font-size:13px;color:#44443B;margin:6px 0 14px;line-height:1.5">Rule: '
-        '<b>order_frequency = Daily or Weekly</b> AND <b>tenure &gt; 6 months</b>. Habitual, '
-        'established buyers whose basket has settled — the auto-nudge cohort.</div>'
-        f'{rows}'
-        f'<div style="margin-top:14px;font-size:12.5px;font-weight:700;color:#16130A">'
-        f'{n} of {len(PROFILES)} synthetic users qualify.</div>')
+        ok, why = eligibility_detail(p, min_tenure)
+        (incl if ok else excl).append((p, why))
+
+    freq_ok = [p for p in PROFILES if (p.get("order_frequency") or "").strip().lower()
+               in ELIGIBLE_FREQS]
+    stages = [(len(PROFILES), "All profiles", "synthetic user base"),
+              (len(freq_ok), "Cadence passes", "Daily or Weekly"),
+              (len(incl), "In queue", f"tenure &gt; {min_tenure}mo")]
+    total = len(PROFILES) or 1
+    funnel = "".join(f"""
+      <div style="flex:1;min-width:120px;background:{'#16130A' if i == 2 else '#F7F8F5'};
+        border-radius:14px;padding:13px 15px">
+        <div style="font-size:24px;font-weight:800;line-height:1;
+          color:{YELLOW if i == 2 else INK}">{n}</div>
+        <div style="font-size:12px;font-weight:700;margin-top:3px;
+          color:{'#CFD0C6' if i == 2 else INK}">{lab}</div>
+        <div style="font-size:11px;margin-top:2px;color:{'#8E8F86' if i == 2 else '#6B6B60'}">{sub}</div>
+        <div style="height:5px;border-radius:99px;margin-top:10px;
+          background:{'rgba(255,255,255,.14)' if i == 2 else '#EDEEE8'};overflow:hidden">
+          <div style="height:100%;width:{round(100 * n / total)}%;border-radius:99px;
+            background:{YELLOW};animation:barGrow .7s cubic-bezier(.2,.7,.3,1)"></div></div>
+      </div>""" for i, (n, lab, sub) in enumerate(stages))
+
+    def row(p, why, ok):
+        months = parse_tenure_months(p.get("tenure"))
+        chips = (f'<span style="font-size:10.5px;font-weight:700;color:#146634;background:#EAF7EE;'
+                 f'border-radius:20px;padding:3px 9px">{esc(p.get("order_frequency"))} ✓</span>'
+                 f'<span style="font-size:10.5px;font-weight:700;color:#146634;background:#EAF7EE;'
+                 f'border-radius:20px;padding:3px 9px">{months}mo ✓</span>') if ok else (
+                 f'<span style="font-size:10.5px;font-weight:600;color:#7A6100;background:#FBF4CE;'
+                 f'border-radius:20px;padding:3px 9px;line-height:1.4">{esc(why.replace("Excluded: ", ""))}</span>')
+        return (f'<div style="display:flex;align-items:center;gap:10px;padding:9px 11px;background:#fff;'
+                f'border:1px solid {"#D8EEDF" if ok else "#EFEFE9"};border-radius:12px;margin-bottom:8px">'
+                f'<div style="width:30px;height:30px;border-radius:9px;flex:none;display:flex;'
+                f'align-items:center;justify-content:center;font-weight:800;font-size:12px;'
+                f'background:{p["avatar_bg"]};color:#16130A">{esc(p["initials"])}</div>'
+                f'<div style="flex:1;min-width:0">'
+                f'<div style="font-size:13px;font-weight:700;color:#16130A">{esc(p["display_name"])}</div>'
+                f'<div style="font-size:11.5px;color:#6B6B60">{esc(p.get("order_frequency"))} · '
+                f'{esc(p.get("tenure"))}</div></div>'
+                f'<div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end;'
+                f'flex:none;max-width:190px;text-align:right">{chips}</div></div>')
+
+    inc_html = "".join(row(p, w, True) for p, w in incl) or \
+        '<div style="font-size:12.5px;color:#6B6B60">No profile passes this threshold.</div>'
+    exc_html = "".join(row(p, w, False) for p, w in excl) or \
+        '<div style="font-size:12.5px;color:#6B6B60">Nobody held back at this threshold.</div>'
+
+    return f"""
+<div style="display:flex;gap:12px;flex-wrap:wrap">{funnel}</div>
+<div style="display:flex;gap:14px;margin-top:18px;flex-wrap:wrap">
+  <div style="flex:1;min-width:250px">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+      <span style="width:8px;height:8px;border-radius:50%;background:#1F9D55"></span>
+      <div style="font-size:12px;font-weight:800;color:#16130A">In queue · {len(incl)}</div></div>
+    {inc_html}
+  </div>
+  <div style="flex:1;min-width:250px">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+      <span style="width:8px;height:8px;border-radius:50%;background:#C4C5B9"></span>
+      <div style="font-size:12px;font-weight:800;color:#16130A">Held back · {len(excl)}</div></div>
+    {exc_html}
+  </div>
+</div>
+<div style="display:flex;gap:10px;align-items:flex-start;margin-top:16px;background:#FFF9E3;
+  border:1px dashed #EBD68A;border-radius:13px;padding:12px 14px">
+  <div style="font-size:16px">⚠️</div>
+  <div style="font-size:12px;color:#6F5700;line-height:1.5">Simulation only — no push notification
+    leaves this demo. There is no live user base or device registry behind the queue.</div>
+</div>"""
 
 
 def _notification_card(p, notif):
+    """One push payload, styled as an iOS-style lock-screen notification."""
     return (
-        '<div style="background:#fff;border:1px solid #EFEFE9;border-radius:16px;padding:14px 15px;'
-        'box-shadow:0 6px 22px rgba(0,0,0,.06);margin-bottom:12px">'
-        '<div style="display:flex;align-items:center;gap:9px;margin-bottom:8px">'
-        '<div style="width:26px;height:26px;border-radius:7px;background:#F8CD1B;display:flex;'
-        f'align-items:center;justify-content:center;font-size:15px">{notif.get("emoji","🛒")}</div>'
-        '<div style="font-size:11px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;'
-        f'color:#6F5700">Blinkit · now · to {esc(p["display_name"])}</div></div>'
-        f'<div style="font-size:14px;font-weight:800;color:#16130A;line-height:1.25">{esc(notif.get("title"))}</div>'
-        f'<div style="font-size:12.5px;color:#44443B;line-height:1.5;margin-top:5px">{esc(notif.get("body"))}</div>'
-        f'<div style="margin-top:9px;display:inline-block;font-size:11px;font-weight:700;color:#2551C6;'
-        f'background:#EFF4FF;border-radius:20px;padding:3px 10px">New category · {esc(notif.get("category"))}</div>'
+        '<div class="nb-pop" style="background:rgba(255,255,255,.94);border-radius:17px;'
+        'padding:11px 13px;margin-bottom:9px;box-shadow:0 4px 16px rgba(0,0,0,.16)">'
+        '<div style="display:flex;align-items:center;gap:7px;margin-bottom:5px">'
+        '<div style="width:19px;height:19px;border-radius:5px;background:#F8CD1B;display:flex;'
+        f'align-items:center;justify-content:center;font-size:11px">🛒</div>'
+        '<div style="font-size:11px;font-weight:700;color:#44443B">Blinkit</div>'
+        f'<div style="flex:1"></div><div style="font-size:10.5px;color:#8A8A7C">now</div></div>'
+        f'<div style="font-size:12.5px;font-weight:800;color:#16130A;line-height:1.3">'
+        f'{notif.get("emoji","🛒")} {esc(notif.get("title"))}</div>'
+        f'<div style="font-size:11.5px;color:#44443B;line-height:1.45;margin-top:3px">'
+        f'{esc(notif.get("body"))}</div>'
+        f'<div style="margin-top:6px;font-size:10px;font-weight:700;color:#2551C6">'
+        f'To {esc(p["display_name"])} · new category · {esc(notif.get("category"))}</div>'
         '</div>')
 
 
-def on_run_auto_batch():
+def _lock_screen(inner, queued, total):
+    return f"""
+<div class="nb-eyebrow" style="text-align:center;margin-bottom:12px">Push payload preview</div>
+<div style="width:320px;margin:0 auto;background:#0E0E0C;border-radius:42px;padding:11px;
+  box-shadow:0 24px 60px rgba(0,0,0,.22)">
+  <div style="border-radius:32px;overflow:hidden;background:linear-gradient(160deg,#3A4256,#1D2130 55%,#12141C);
+    padding:14px 12px 18px;min-height:430px">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:0 10px 6px;
+      font-size:11.5px;font-weight:700;color:#fff"><span>9:41</span><span>📶 &nbsp;🔋</span></div>
+    <div style="text-align:center;margin:14px 0 18px">
+      <div style="font-size:12.5px;font-weight:600;color:rgba(255,255,255,.82)">Saturday, 26 July</div>
+      <div style="font-size:52px;font-weight:300;color:#fff;line-height:1.05;letter-spacing:-.02em">9:41</div>
+    </div>
+    <div>{inner}</div>
+  </div>
+</div>
+<div style="text-align:center;font-size:11.5px;font-weight:600;color:#6B6B60;margin-top:12px">
+  {queued} of {total} profiles nudged · each payload is shaped from that user's generated nudge</div>"""
+
+
+def on_run_auto_batch(min_tenure=MIN_TENURE_MONTHS):
+    total = len(PROFILES)
+    queue = eligible_profiles(min_tenure_months=int(min_tenure))
     if "GROQ_API_KEY" not in os.environ:
         return ('<div class="nb-dark"><div class="k">Error</div><div style="margin-top:8px;font-size:13px">'
                 'GROQ_API_KEY is not configured on the server.</div></div>')
+    if not queue:
+        return _lock_screen(
+            '<div style="background:rgba(255,255,255,.12);border-radius:15px;padding:16px;'
+            'font-size:12px;color:rgba(255,255,255,.8);text-align:center;line-height:1.5">'
+            'No profile passes the gate at this tenure threshold — nothing would be sent.</div>',
+            0, total)
     cards = ""
-    for p in eligible_profiles():
+    for p in queue:
         theme, reason = match_profile_to_theme(p, THEMES)
         try:
-            notif = to_notification(generate_nudge(p, theme, reason))
+            notif = to_notification(generate_nudge(p, theme, reason))  # REAL Groq call
         except Exception as e:  # noqa: BLE001
-            cards += f'<div style="color:#B00">Failed for {esc(p["display_name"])}: {esc(e)}</div>'
+            cards += (f'<div style="background:rgba(255,255,255,.9);border-radius:15px;padding:11px;'
+                      f'font-size:11.5px;color:#B00;margin-bottom:9px">Failed for '
+                      f'{esc(p["display_name"])}: {esc(e)}</div>')
             continue
         cards += _notification_card(p, notif)
-    return ('<div class="nb-eyebrow" style="margin-bottom:10px">Generated notifications · '
-            'live Groq</div>' + cards +
-            '<div style="margin-top:8px;font-size:11.5px;color:#6B6B60">Simulated scheduled send — '
-            'no real push is dispatched. Copy generated live per user.</div>')
+    return _lock_screen(cards, len(queue), total)
 
 
 # ----------------------- Feature 2: checkout cart-filler -----------------------
+def cart_phone_html(uid, cart_total):
+    """The design's checkout screen. Cart contents are shown as the user's OWN habitual
+    categories (real profile field) with a single subtotal, rather than inventing
+    line-item products and prices that don't exist."""
+    p = BY_ID[uid]
+    cart_total = int(cart_total)
+    res = suggest_fillers(p, cart_total)
+    thr, gap = res["threshold"], res["gap"]
+    pct = min(100, round(cart_total / thr * 100)) if thr else 100
+    qualifies = res["qualifies"]
+
+    lines = "".join(f"""
+      <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid #F2F2EC">
+        <div style="width:34px;height:34px;border-radius:9px;background:#F7F8F5;display:flex;
+          align-items:center;justify-content:center;font-size:16px;flex:none">🛒</div>
+        <div style="flex:1;min-width:0"><div style="font-size:12.5px;font-weight:700;color:#16130A">{esc(c)}</div>
+        <div style="font-size:11px;color:#6B6B60">usual item</div></div>
+      </div>""" for c in p["buys_display"][:3])
+
+    if qualifies:
+        band = ('#EAF7EE', '#C4E7CF', '#146634', '✓',
+                'Free delivery unlocked — no filler needed.')
+    else:
+        band = ('#FFF9E3', '#EBD68A', '#6F5700', '🚚',
+                f'Add ₹{gap} more to unlock free delivery')
+    threshold_band = f"""
+      <div style="background:{band[0]};border:1px solid {band[1]};border-radius:13px;padding:11px 13px;
+        margin:12px 0">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+          <div style="font-size:15px">{band[3]}</div>
+          <div style="font-size:12.5px;font-weight:700;color:{band[2]}">{band[4]}</div></div>
+        <div style="height:7px;background:rgba(0,0,0,.07);border-radius:99px;overflow:hidden">
+          <div style="height:100%;width:{pct}%;border-radius:99px;background:#F8CD1B;
+            animation:barGrow .7s cubic-bezier(.2,.7,.3,1)"></div></div>
+        <div style="display:flex;justify-content:space-between;font-size:10.5px;font-weight:600;
+          color:#6B6B60;margin-top:5px"><span>₹{cart_total}</span>
+          <span>free delivery at ₹{thr}</span></div>
+      </div>"""
+
+    fillers = ""
+    if res["items"]:
+        cards = "".join(f"""
+          <div style="display:flex;align-items:center;gap:10px;background:#fff;border:1px solid #EFEFE9;
+            border-radius:13px;padding:10px 11px;margin-bottom:8px">
+            <div style="width:38px;height:38px;border-radius:10px;background:#FFF3D6;display:flex;
+              align-items:center;justify-content:center;font-size:18px;flex:none">🛍️</div>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;
+                color:#2551C6">New for you · {esc(it["category"])}</div>
+              <div style="font-size:12.5px;font-weight:700;color:#16130A;line-height:1.25">{esc(it["name"])}</div>
+              {'<div style="font-size:10.5px;font-weight:700;color:#146634">Unlocks free delivery</div>'
+               if it["covers_gap"] else ''}
+            </div>
+            <div style="text-align:right;flex:none">
+              <div style="font-size:13px;font-weight:800;color:#16130A">₹{it["price"]}</div>
+              <div style="font-size:10.5px;font-weight:800;color:#F8CD1B;background:#16130A;
+                border-radius:6px;padding:3px 9px;margin-top:4px">ADD</div></div>
+          </div>""" for it in res["items"])
+        fillers = (f'<div style="font-size:11.5px;font-weight:800;color:#16130A;margin:14px 0 8px">'
+                   f'Add one of these to unlock it</div>{cards}')
+
+    fee = "FREE" if qualifies else f"₹{DELIVERY_FEE}"
+    payable = cart_total if qualifies else cart_total + DELIVERY_FEE
+    inner = f"""
+<div style="display:flex;align-items:center;gap:10px;padding:4px 2px 10px">
+  <span style="font-size:16px;color:#16130A">←</span>
+  <div style="font-size:14px;font-weight:800;color:#16130A">Your cart</div>
+  <div style="flex:1"></div>
+  <div style="font-size:11px;font-weight:700;color:#146634;background:#EAF7EE;border-radius:20px;
+    padding:3px 9px">8 min</div>
+</div>
+{lines}
+{threshold_band}
+{fillers}
+<div style="border-top:1px solid #F2F2EC;margin-top:12px;padding-top:11px">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:#44443B;margin-bottom:5px">
+    <span>Item total</span><span style="font-weight:700">₹{cart_total}</span></div>
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:#44443B;margin-bottom:8px">
+    <span>Delivery fee</span>
+    <span style="font-weight:800;color:{'#146634' if qualifies else '#44443B'}">{fee}</span></div>
+  <div style="display:flex;justify-content:space-between;font-size:13.5px;font-weight:800;color:#16130A">
+    <span>To pay</span><span>₹{payable}</span></div>
+  <div style="width:100%;background:#16130A;color:#F8CD1B;font-size:13.5px;font-weight:800;
+    padding:12px;border-radius:12px;text-align:center;margin-top:11px">Place order · ₹{payable}</div>
+</div>"""
+
+    return f"""
+<div class="nb-eyebrow" style="text-align:center;margin-bottom:12px">Checkout screen</div>
+<div class="nb-phone" style="margin:0 auto"><div class="nb-screen">
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:11px 24px 6px;
+    font-size:12px;font-weight:700;color:#16130A"><span>9:41</span><span>📶 &nbsp;🔋</span></div>
+  <div style="padding:8px 15px 20px;background:#fff">{inner}</div>
+</div></div>
+<div style="text-align:center;font-size:11.5px;color:#6B6B60;margin-top:12px;line-height:1.5;
+  max-width:300px;margin-left:auto;margin-right:auto">Cart shows this shopper's own habitual
+  categories. Synthetic demo catalog; the threshold, fee and prices are illustrative.</div>"""
+
+
+def cart_logic_html(uid, cart_total):
+    """'How the filler is chosen' + the full ranked candidate pool — both real:
+    the rules describe the deterministic selection in cart_filler.suggest_fillers, and
+    the pool is never_bought_categories() ranked by the same basket-adjacency ranker."""
+    p = BY_ID[uid]
+    cart_total = int(cart_total)
+    res = suggest_fillers(p, cart_total)
+    gap = res["gap"]
+    scores = adjacency_scores(p)
+
+    rules = [
+        ("Never-bought only", "Candidate categories exclude everything already in this user's basket."),
+        ("Ranked by basket adjacency", "The same deterministic ranker the nudge agent uses, so the add-on still feels relevant."),
+        ("Closes the gap in one add", f"Items priced at or above the ₹{gap} gap come first, cheapest of those first."),
+        ("One item per category", "The carousel spans distinct new categories rather than three of the same."),
+    ]
+    rule_html = "".join(f"""
+      <div style="display:flex;gap:11px;align-items:flex-start;margin-bottom:11px">
+        <div style="width:21px;height:21px;border-radius:7px;background:#F8CD1B;color:#16130A;
+          font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;
+          flex:none;margin-top:1px">{i}</div>
+        <div><div style="font-size:12.5px;font-weight:700;color:#16130A">{t}</div>
+        <div style="font-size:11.5px;color:#6B6B60;line-height:1.45">{b}</div></div>
+      </div>""" for i, (t, b) in enumerate(rules, 1))
+
+    # never_bought_categories() applies the ranker's per-user rotation, so its raw order is
+    # not monotonic in adjacency. Sort the *display* by weight so the "ranked by basket
+    # adjacency" label is literally true; the offered three are still whatever
+    # suggest_fillers() actually chose (gap-coverage first — see rule 3).
+    pool = sorted(never_bought_categories(p), key=lambda c: (-scores.get(c, 0), c))
+    offered = {it["category"] for it in res["items"]}
+    pool_html = "".join(f"""
+      <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #F2F2EC">
+        <div style="font-size:12.5px;font-weight:{'800' if c in offered else '600'};
+          color:{'#16130A' if c in offered else '#6B6B60'};flex:1;min-width:0">{esc(c)}</div>
+        <div style="font-size:11.5px;font-weight:700;color:#6B6B60;flex:none">adjacency {scores.get(c, 0)}</div>
+        <div style="font-size:9.5px;font-weight:800;letter-spacing:.05em;border-radius:5px;padding:3px 7px;
+          width:74px;text-align:center;flex:none;
+          background:{'#F8CD1B' if c in offered else '#F2F3EE'};
+          color:{'#16130A' if c in offered else '#8A8A7C'}">{'OFFERED' if c in offered else 'in pool'}</div>
+      </div>""" for c in pool) or '<div style="font-size:12.5px;color:#6B6B60">No never-bought category left.</div>'
+
+    stats = [("Gap", "—" if res["qualifies"] else f"₹{gap}"),
+             ("Delivery saved", f"₹{DELIVERY_FEE}"),
+             ("Fillers offered", str(len(res["items"])))]
+    stat_html = "".join(f"""
+      <div class="nb-tile"><div class="nb-tile-k">{k}</div>
+      <div class="nb-tile-v" style="font-size:16px">{v}</div></div>""" for k, v in stats)
+
+    return f"""
+<div style="display:flex;gap:10px;margin-bottom:18px">{stat_html}</div>
+<div class="nb-eyebrow" style="margin-bottom:11px">How the filler is chosen</div>
+{rule_html}
+<div style="display:flex;gap:10px;align-items:flex-start;background:#FFF9E3;border:1px dashed #EBD68A;
+  border-radius:13px;padding:12px 14px;margin:4px 0 18px">
+  <div style="font-size:16px">🎯</div>
+  <div style="font-size:11.5px;color:#6F5700;line-height:1.5">Complements the push nudge rather than
+    repeating it: the queue targets high-intent habituals, while a ₹60 top-up needs
+    <b>no pre-existing intent at all</b> — it reaches the low-intent segment the notification
+    deliberately skips.</div>
+</div>
+<div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:4px">
+  <div class="nb-eyebrow">Candidate pool · {esc(p['display_name'])}</div>
+  <div style="font-size:11px;font-weight:600;color:#6B6B60">ranked by basket adjacency</div>
+</div>
+<div style="font-size:11.5px;color:#6B6B60;margin-bottom:10px;line-height:1.45">Every candidate is from
+  a category this user has never purchased. Top {len(res['items'])} shown in the app, one per category.</div>
+{pool_html}"""
+
+
 def cart_filler_html(uid, cart_total):
     p = BY_ID[uid]
     cart_total = int(cart_total)
@@ -697,21 +992,31 @@ with gr.Blocks(title="Blinkit Category Nudge Agent", css=CSS, head=FONT_LINK,
             with gr.Row(elem_classes="nb-cols"):
                 with gr.Column(scale=110):
                     with gr.Column(elem_classes="nb-card"):
-                        gr.HTML(auto_eligibility_html())
+                        head_out = gr.HTML(auto_gate_head())
+                        with gr.Column(elem_id="tenwrap"):
+                            tenure = gr.Slider(3, 12, value=MIN_TENURE_MONTHS, step=1,
+                                               label="Minimum tenure threshold (months)")
+                        gate_out = gr.HTML(auto_eligibility_html())
                         run_batch = gr.Button("▶ Run scheduled batch", elem_id="genbatch")
                 with gr.Column(scale=90):
                     with gr.Column(elem_classes="nb-card"):
-                        auto_out = gr.HTML('<div style="font-size:13px;color:#6B6B60;line-height:1.55">'
-                                           'Press <b style="color:#16130A">Run scheduled batch</b> to generate '
-                                           'the notification each eligible user would receive.</div>')
+                        auto_out = gr.HTML(_lock_screen(
+                            '<div style="background:rgba(255,255,255,.12);border-radius:15px;padding:16px;'
+                            'font-size:12px;color:rgba(255,255,255,.85);text-align:center;line-height:1.5">'
+                            'Press <b style="color:#fff">Run scheduled batch</b> to generate the payload '
+                            'each queued user would receive.</div>',
+                            len(eligible_profiles()), len(PROFILES)))
 
         with gr.Tab("Checkout cart-filler"):
             with gr.Row(elem_classes="nb-cols"):
+                with gr.Column(scale=90):
+                    with gr.Column(elem_classes="nb-card"):
+                        cart_phone = gr.HTML(cart_phone_html(PROFILES[0]["user_id"], 150))
                 with gr.Column(scale=110):
                     with gr.Column(elem_classes="nb-card"):
-                        gr.HTML('<div class="nb-eyebrow">Simulate a checkout</div>'
+                        gr.HTML('<div class="nb-eyebrow">Simulate the cart</div>'
                                 '<div style="font-size:13px;color:#44443B;margin:6px 0 12px;line-height:1.5">'
-                                'Pick a user and a cart total. If they are short of the ₹'
+                                'Pick a user and drag the total to watch the carousel re-rank. Short of the ₹'
                                 f'{FREE_DELIVERY_THRESHOLD} free-delivery threshold, we offer a low-cost item '
                                 'from a category they have <b>never bought</b> — a zero-friction trial.</div>')
                         cart_user = gr.Dropdown(
@@ -719,17 +1024,19 @@ with gr.Blocks(title="Blinkit Category Nudge Agent", css=CSS, head=FONT_LINK,
                             value=PROFILES[0]["user_id"], label="User")
                         cart_amt = gr.Slider(0, FREE_DELIVERY_THRESHOLD + 60, value=150, step=5,
                                              label="Cart total (₹)")
-                with gr.Column(scale=90):
                     with gr.Column(elem_classes="nb-card"):
-                        cart_out = gr.HTML(cart_filler_html(PROFILES[0]["user_id"], 150))
+                        cart_out = gr.HTML(cart_logic_html(PROFILES[0]["user_id"], 150))
 
     for btn, p in zip(chip_btns, PROFILES):
         btn.click(lambda uid=p["user_id"]: on_select(uid),
                   outputs=[sel, prof_out, reason_out, phone_out, measure_out] + chip_btns)
     gen.click(on_generate, inputs=sel, outputs=[reason_out, phone_out, measure_out])
-    run_batch.click(on_run_auto_batch, outputs=auto_out)
-    cart_user.change(cart_filler_html, inputs=[cart_user, cart_amt], outputs=cart_out)
-    cart_amt.change(cart_filler_html, inputs=[cart_user, cart_amt], outputs=cart_out)
+    tenure.change(auto_gate_head, inputs=tenure, outputs=head_out)
+    tenure.change(auto_eligibility_html, inputs=tenure, outputs=gate_out)
+    run_batch.click(on_run_auto_batch, inputs=tenure, outputs=auto_out)
+    for _c in (cart_user, cart_amt):
+        _c.change(cart_phone_html, inputs=[cart_user, cart_amt], outputs=cart_phone)
+        _c.change(cart_logic_html, inputs=[cart_user, cart_amt], outputs=cart_out)
 
 
 if __name__ == "__main__":
