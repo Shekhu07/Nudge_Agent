@@ -10,6 +10,8 @@ pinned: false
 
 # Blinkit Category Nudge Agent (Part 4 MVP)
 
+[![tests](https://github.com/Shekhu07/Nudge_Agent/actions/workflows/tests.yml/badge.svg)](https://github.com/Shekhu07/Nudge_Agent/actions/workflows/tests.yml)
+
 AI-native MVP for the NextLeap PM Fellowship graduation project. Given a repeat Blinkit
 buyer's order history, it matches them to the strongest validated friction theme from the
 Part 1 discovery engine + Part 3 problem statement, then uses a Groq LLM to generate a
@@ -126,6 +128,22 @@ python app.py                    # Gradio UI on http://127.0.0.1:7860
 # or, for the FastAPI + JSON API variant:
 uvicorn app_fastapi:app --reload --port 7860
 ```
+
+## Tests
+
+The deterministic layers (`friction_matching.py`, `auto_targeting.py`, `cart_filler.py`) —
+everything that runs without an LLM call — have a pytest suite. No network access or
+`GROQ_API_KEY` required.
+
+```bash
+pip install -r requirements-dev.txt
+pytest tests/ -v
+```
+
+`.github/workflows/tests.yml` runs this suite on every push/PR to the
+[GitHub mirror](https://github.com/Shekhu07/Nudge_Agent) (the badge above tracks it).
+The HuggingFace Space remains the deployed, live copy — HF Spaces doesn't execute GitHub
+Actions itself, so CI runs on GitHub and deploys happen via push to the Space.
 
 ## Deploy to HuggingFace Spaces (production, free — Gradio SDK)
 

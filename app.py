@@ -941,6 +941,81 @@ def cart_filler_html(uid, cart_total):
             'user has never bought. Synthetic demo catalog; prices illustrative.</div>')
 
 
+def about_html():
+    """The traceability story + the real-vs-synthetic ledger + honest limitations —
+    surfaced inside the app itself (not just README) since an evaluator opening the
+    live Space link will never see the GitHub README."""
+    chain = [
+        ("Part 1", "Discovery", "Two-Step Gated extraction over 1,094 gate-passing extractions — real, locked evidence counts."),
+        ("Part 2", "Survey", "N=25 Phase 3 survey; 14/25 (56%) self-reported “mostly stick to the same categories.”"),
+        ("Part 3", "Problem statement", "~70% of category stagnation is quality/trust-driven (770/1,094); the rest is low-intent."),
+        ("Part 4", "This agent", "Matches a user to the closest friction theme, then an LLM writes the nudge — this MVP."),
+    ]
+    chain_html = "".join(f"""
+      <div style="flex:1;min-width:150px;background:#F7F8F5;border-radius:14px;padding:13px 15px">
+        <div style="font-size:11px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:#146634">{esc(a)}</div>
+        <div style="font-size:14px;font-weight:800;color:#16130A;margin:3px 0 6px">{esc(b)}</div>
+        <div style="font-size:11.5px;color:#6B6B60;line-height:1.45">{esc(c)}</div>
+      </div>{'<div style="display:flex;align-items:center;color:#C4C5B9;font-size:18px;padding:0 2px">→</div>' if i < len(chain) else ''}"""
+        for i, (a, b, c) in enumerate(chain, 1))
+
+    ledger = [
+        ("Friction theme evidence share (70%, 770/1,094)", "REAL", "Locked Part 1 numbers — shown verbatim, never an LLM-invented confidence score."),
+        ("Trust-driver ranking (refund #1, freshness #2)", "REAL", "Q15 survey result (11/25, 9/25 picks) — fixed as the agent's rule 1, not a per-user guess."),
+        ("Friction matching (which theme a user gets)", "REAL LOGIC", "Deterministic rules in friction_matching.py; no LLM involved in the match itself."),
+        ("Candidate category ranking (“also considered”)", "REAL LOGIC", "Integer basket-adjacency weights, summed and shown as-is — not the 0.88/0.61/0.44-style confidence scores the original mockup invented."),
+        ("Nudge copy, headline, reasoning", "LIVE LLM", "Generated per user per click by Groq llama-3.3-70b-versatile — not looked up from a fixed table."),
+        ("User profiles (8 personas)", "SYNTHETIC", "Hand-authored to instantiate real survey patterns; no real Blinkit customer data was available."),
+        ("Holdout-test lift / conversion figures", "REMOVED", "The imported mockup had fabricated +34% lift / p&lt;0.05 numbers. No experiment has run — replaced with a measurement plan, no invented figures."),
+        ("Outcome-tracker funnel (7d, 41% repurchase)", "REMOVED", "Also fabricated in the mockup — replaced with the real event spec, explicitly labeled “no live data.”"),
+        ("Catalog prices, delivery fee, threshold", "ILLUSTRATIVE", "Stated demo constants for the cart-filler tab; not claimed or measured Blinkit figures."),
+    ]
+    ledger_html = "".join(f"""
+      <div style="display:flex;align-items:flex-start;gap:11px;padding:9px 0;border-bottom:1px solid #F2F2EC">
+        <div style="font-size:9.5px;font-weight:800;letter-spacing:.05em;border-radius:5px;padding:3px 8px;
+          width:88px;text-align:center;flex:none;margin-top:1px;
+          background:{'#EAF7EE' if tag in ('REAL','REAL LOGIC') else '#FFF3D6' if tag=='LIVE LLM' else '#F3F4F0' if tag=='ILLUSTRATIVE' else '#FBE9E9'};
+          color:{'#146634' if tag in ('REAL','REAL LOGIC') else '#7A6100' if tag=='LIVE LLM' else '#6B6B60' if tag=='ILLUSTRATIVE' else '#B23B3B'}">{tag}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:12.5px;font-weight:700;color:#16130A">{esc(item)}</div>
+          <div style="font-size:11.5px;color:#6B6B60;line-height:1.45;margin-top:2px">{esc(note)}</div>
+        </div>
+      </div>""" for item, tag, note in ledger)
+
+    limits = [
+        "Cohort is 8 hand-authored synthetic profiles, not a real user base — the matching rules and ranker are built to generalize, but have only ever been exercised against these 8.",
+        "No experiment has been run against real users. The measurement plan and instrumentation spec describe how it WOULD be validated; every number on those two panels would be invented if shown today.",
+        "Single nudge mechanic in scope: refund guarantee + quality signal (+ numbers-free peer proof), matching only the ~70% quality/trust-driven share of stagnation. The low-intent ~30% gets a deliberately softer, honestly-scoped nudge — this MVP does not claim to fix that half.",
+        "Deferred backlog: the pre-acceptance-inspection trust driver, and any richer targeting beyond the Daily/Weekly + tenure gate, are out of scope for this MVP and would be the next slice.",
+        "LLM output is not schema-validated beyond response_format=json_object — a malformed or missing field degrades gracefully in the UI (rows hide rather than render empty) but isn't retried or re-prompted.",
+    ]
+    limits_html = "".join(f"""
+      <div style="display:flex;gap:10px;align-items:flex-start;margin-bottom:10px">
+        <div style="width:6px;height:6px;border-radius:50%;background:#E7B400;flex:none;margin-top:6px"></div>
+        <div style="font-size:12.5px;color:#44443B;line-height:1.55">{esc(t)}</div>
+      </div>""" for t in limits)
+
+    return f"""
+<div class="nb-card">
+  <div class="nb-eyebrow" style="margin-bottom:6px">Traceability</div>
+  <div style="font-size:16px;font-weight:800;color:#16130A;margin-bottom:14px">Part 1 → Part 4, in one thread</div>
+  <div style="display:flex;align-items:stretch;gap:8px;flex-wrap:wrap">{chain_html}</div>
+</div>
+<div class="nb-card">
+  <div class="nb-eyebrow" style="margin-bottom:6px">Real vs. synthetic vs. removed</div>
+  <div style="font-size:16px;font-weight:800;color:#16130A;margin-bottom:4px">What's actually backing each number on screen</div>
+  <div style="font-size:12.5px;color:#6B6B60;margin-bottom:12px;line-height:1.5">Two panels in an earlier imported design
+    (a holdout-test result and a live outcome funnel) carried fabricated figures implying this MVP had already been
+    validated. It hasn't — they were rebuilt as honest specs rather than shipped.</div>
+  {ledger_html}
+</div>
+<div class="nb-card">
+  <div class="nb-eyebrow" style="margin-bottom:6px">Known limitations · what's next</div>
+  <div style="font-size:16px;font-weight:800;color:#16130A;margin-bottom:14px">Where this MVP deliberately stops</div>
+  {limits_html}
+</div>"""
+
+
 # ----------------------------- app -----------------------------
 def on_select(uid):
     p = BY_ID[uid]
@@ -1040,6 +1115,9 @@ with gr.Blocks(title="Blinkit Category Nudge Agent", css=CSS, head=FONT_LINK,
                                              label="Cart total (₹)")
                     with gr.Column(elem_classes="nb-card"):
                         cart_out = gr.HTML(cart_logic_html(PROFILES[0]["user_id"], 150))
+
+        with gr.Tab("About & methodology"):
+            gr.HTML(about_html())
 
     for btn, p in zip(chip_btns, PROFILES):
         btn.click(lambda uid=p["user_id"]: on_select(uid),
