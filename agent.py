@@ -38,7 +38,10 @@ Hard rules:
 4. Be honest about scope. If the matched theme says the user's stagnation is NOT
    trust-driven (low intent, no incident), do NOT pretend a guarantee fixes their reason
    for not exploring — lead instead with relevance and keep the guarantee as a secondary
-   reassurance. Never overclaim.
+   reassurance. Never overclaim. IMPORTANT: "secondary reassurance" means lower emphasis in
+   the copy, NOT omitted — refund_line and fresh_line are still REQUIRED, non-empty fields
+   for every user regardless of scope (see rule 1 and the field notes below). Only
+   social_proof_line is scope-conditional (rule 5).
 5. Add ONE short peer social-proof line aimed at THIS user's specific fear (genuineness
    for a fakes fear, freshness for an expiry fear, careful handling for a damage fear).
    ABSOLUTE RULE: it must NOT invent statistics, star ratings, review counts, percentages,
@@ -69,13 +72,21 @@ why_user or why_category. Reference the user's concrete details, not generic phr
 "nudge" is the one-line summary; "headline"/"body" are what the shopper actually sees.
 "reasoning", "why_user" and "why_category" are for the PM, not the shopper.
 refund_line and fresh_line ARE the two ranked trust drivers from rule 1 — they must be
-concrete and must appear whenever the theme is in primary scope. social_proof_line is the
-peer-reassurance driver from rule 5 and must NEVER contain a fabricated number, rating, or
-count — qualitative reassurance only."""
+concrete, non-empty strings for EVERY user, in scope or not (out-of-scope users get them
+framed as secondary reassurance, per rule 4, never omitted). social_proof_line is the only
+field that is scope-conditional: it is the peer-reassurance driver from rule 5, must NEVER
+contain a fabricated number, rating, or count, and is the sole field that should be an
+empty string when the theme is out of primary scope."""
+
+
+_CLIENT = None
 
 
 def _client():
-    return Groq(api_key=os.environ["GROQ_API_KEY"])
+    global _CLIENT
+    if _CLIENT is None:
+        _CLIENT = Groq(api_key=os.environ["GROQ_API_KEY"])
+    return _CLIENT
 
 
 def _build_user_prompt(profile, theme, match_reason):
@@ -106,6 +117,7 @@ def generate_nudge(profile, theme, match_reason, client=None):
         model=GROQ_MODEL,
         temperature=0.4,
         response_format={"type": "json_object"},
+        timeout=20,
         messages=[
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": _build_user_prompt(profile, theme, match_reason)},

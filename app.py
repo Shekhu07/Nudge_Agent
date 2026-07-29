@@ -15,6 +15,7 @@ Local run:  python app.py   (http://127.0.0.1:7860)
 """
 import html
 import os
+from concurrent.futures import ThreadPoolExecutor
 
 import gradio as gr
 from dotenv import load_dotenv
@@ -490,7 +491,7 @@ def phone_html(p, r=None):
         return _phone_shell(p, inner)
 
     cat = esc(r.get("suggested_category", "")).title()
-    emoji = r.get("emoji") or "🛍️"
+    emoji = esc(r.get("emoji") or "🛍️")
     inner = f"""
 <div class="nb-pop" style="background:#fff;border-radius:20px;overflow:hidden;
   box-shadow:0 6px 22px rgba(0,0,0,.08);border:1px solid #EFEFE9">
@@ -503,12 +504,14 @@ def phone_html(p, r=None):
   <div style="padding:15px 16px 17px">
     <div style="font-size:13.5px;line-height:1.55;color:#44443B;margin-bottom:13px">{esc(r.get('body'))}</div>
     <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:15px">
-      <div style="display:flex;align-items:center;gap:9px;background:#EFF4FF;border:1px solid #D6E1FB;
+      {(f'''<div style="display:flex;align-items:center;gap:9px;background:#EFF4FF;border:1px solid #D6E1FB;
         border-radius:11px;padding:9px 12px"><div style="font-size:16px">🛡️</div>
-        <div style="font-size:12.5px;font-weight:700;color:#2551C6">{esc(r.get('refund_line'))}</div></div>
-      <div style="display:flex;align-items:center;gap:9px;background:#EAF7EE;border:1px solid #C4E7CF;
+        <div style="font-size:12.5px;font-weight:700;color:#2551C6">{esc(r.get('refund_line'))}</div></div>'''
+        if r.get('refund_line') else '')}
+      {(f'''<div style="display:flex;align-items:center;gap:9px;background:#EAF7EE;border:1px solid #C4E7CF;
         border-radius:11px;padding:9px 12px"><div style="font-size:16px">🌿</div>
-        <div style="font-size:12.5px;font-weight:700;color:#146634">{esc(r.get('fresh_line'))}</div></div>
+        <div style="font-size:12.5px;font-weight:700;color:#146634">{esc(r.get('fresh_line'))}</div></div>'''
+        if r.get('fresh_line') else '')}
       {(f'''<div style="display:flex;align-items:center;gap:9px;background:#F6EFFB;border:1px solid #E2D2F0;
         border-radius:11px;padding:9px 12px"><div style="font-size:16px">💬</div>
         <div style="font-size:12.5px;font-weight:700;color:#6B3FA0">{esc(r.get('social_proof_line'))}</div></div>'''
@@ -668,7 +671,7 @@ def _notification_card(p, notif):
         '<div style="font-size:11px;font-weight:700;color:#44443B">Blinkit</div>'
         f'<div style="flex:1"></div><div style="font-size:10.5px;color:#8A8A7C">now</div></div>'
         f'<div style="font-size:12.5px;font-weight:800;color:#16130A;line-height:1.3">'
-        f'{notif.get("emoji","🛒")} {esc(notif.get("title"))}</div>'
+        f'{esc(notif.get("emoji", "🛒"))} {esc(notif.get("title"))}</div>'
         f'<div style="font-size:11.5px;color:#44443B;line-height:1.45;margin-top:3px">'
         f'{esc(notif.get("body"))}</div>'
         f'<div style="margin-top:6px;font-size:10px;font-weight:700;color:#2551C6">'
@@ -708,17 +711,28 @@ def on_run_auto_batch(min_tenure=MIN_TENURE_MONTHS):
             'font-size:12px;color:rgba(255,255,255,.8);text-align:center;line-height:1.5">'
             'No profile passes the gate at this tenure threshold — nothing would be sent.</div>',
             0, total)
-    cards = ""
-    for p in queue:
+    def _gen(p):
         theme, reason = match_profile_to_theme(p, THEMES)
-        try:
-            notif = to_notification(generate_nudge(p, theme, reason))  # REAL Groq call
-        except Exception as e:  # noqa: BLE001
+        return generate_nudge(p, theme, reason)  # REAL Groq call
+
+    cards = ""
+    with ThreadPoolExecutor(max_workers=min(8, len(queue))) as pool:
+        futures = {pool.submit(_gen, p): p for p in queue}
+        results = {}
+        for fut in futures:
+            p = futures[fut]
+            try:
+                results[p["user_id"]] = ("ok", to_notification(fut.result()))
+            except Exception as e:  # noqa: BLE001
+                results[p["user_id"]] = ("error", e)
+    for p in queue:
+        kind, payload = results[p["user_id"]]
+        if kind == "error":
             cards += (f'<div style="background:rgba(255,255,255,.9);border-radius:15px;padding:11px;'
                       f'font-size:11.5px;color:#B00;margin-bottom:9px">Failed for '
-                      f'{esc(p["display_name"])}: {esc(e)}</div>')
-            continue
-        cards += _notification_card(p, notif)
+                      f'{esc(p["display_name"])}: {esc(payload)}</div>')
+        else:
+            cards += _notification_card(p, payload)
     return _lock_screen(cards, len(queue), total)
 
 
