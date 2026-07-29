@@ -3,7 +3,7 @@ import pytest
 
 from friction_matching import (SUGGESTABLE_CATEGORIES, adjacency_scores, load_profiles,
                                 load_themes, match_profile_to_theme,
-                                rank_suggestable_categories)
+                                primary_suggested_category, rank_suggestable_categories)
 
 
 def _profile(user_id="U1", top_categories=None, recent_incident=None):
@@ -82,6 +82,25 @@ def test_ranking_returns_subset_of_suggestable_categories():
     pool = rank_suggestable_categories(p)
     assert set(pool).issubset(set(SUGGESTABLE_CATEGORIES))
     assert len(pool) > 0
+
+
+# --------------------------- primary_suggested_category ---------------------------
+
+def test_primary_suggested_category_matches_top4_ranker_pick():
+    p = _profile(user_id="SYN-777", top_categories=["groceries", "dairy"])
+    assert primary_suggested_category(p) == rank_suggestable_categories(p, top_n=4)[0]
+
+
+def test_primary_suggested_category_none_when_everything_already_owned():
+    p = _profile(top_categories=list(SUGGESTABLE_CATEGORIES))
+    assert primary_suggested_category(p) is None
+
+
+def test_primary_suggested_category_stable_across_calls():
+    p = _profile(user_id="SYN-321", top_categories=["household"])
+    first = primary_suggested_category(p)
+    for _ in range(5):
+        assert primary_suggested_category(p) == first
 
 
 def test_ranking_falls_back_when_all_pass_categories_already_owned():

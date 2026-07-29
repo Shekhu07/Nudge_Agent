@@ -22,7 +22,8 @@ from dotenv import load_dotenv
 
 from agent import generate_nudge
 from friction_matching import (adjacency_scores, load_profiles, load_themes,
-                               match_profile_to_theme, rank_suggestable_categories)
+                               match_profile_to_theme, primary_suggested_category,
+                               rank_suggestable_categories)
 from auto_targeting import (ELIGIBLE_FREQS, MIN_TENURE_MONTHS, eligibility_detail,
                             eligible_profiles, parse_tenure_months, to_notification)
 from cart_filler import (DELIVERY_FEE, FREE_DELIVERY_THRESHOLD, never_bought_categories,
@@ -776,25 +777,40 @@ def cart_phone_html(uid, cart_total):
           <span>free delivery at ₹{thr}</span></div>
       </div>"""
 
-    fillers = ""
-    if res["items"]:
-        cards = "".join(f"""
+    def _filler_card(it):
+        badges = []
+        if it.get("is_anchor"):
+            badges.append('<span style="font-size:9.5px;font-weight:800;color:#7A6100;'
+                           'background:#FFF3D6;border-radius:20px;padding:2px 8px;white-space:nowrap">'
+                           '🔗 Same category as your push nudge</span>')
+        if it["covers_gap"]:
+            badges.append('<span style="font-size:9.5px;font-weight:800;color:#146634;'
+                           'background:#EAF7EE;border-radius:20px;padding:2px 8px;white-space:nowrap">'
+                           'Unlocks free delivery</span>')
+        badge_row = (f'<div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:5px">'
+                     f'{"".join(badges)}</div>' if badges else '')
+        return f"""
           <div style="display:flex;align-items:center;gap:10px;background:#fff;border:1px solid #EFEFE9;
             border-radius:13px;padding:10px 11px;margin-bottom:8px">
             <div style="width:38px;height:38px;border-radius:10px;background:#FFF3D6;display:flex;
               align-items:center;justify-content:center;font-size:18px;flex:none">🛍️</div>
             <div style="flex:1;min-width:0">
               <div style="font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;
-                color:#2551C6">New for you · {esc(it["category"])}</div>
+                color:#2551C6">Your first order in {esc(it["category"])}</div>
               <div style="font-size:12.5px;font-weight:700;color:#16130A;line-height:1.25">{esc(it["name"])}</div>
-              {'<div style="font-size:10.5px;font-weight:700;color:#146634">Unlocks free delivery</div>'
-               if it["covers_gap"] else ''}
+              <div style="font-size:10.5px;color:#6B6B60;margin-top:2px">Never bought before ·
+                zero-risk ₹{it["price"]} trial</div>
+              {badge_row}
             </div>
             <div style="text-align:right;flex:none">
               <div style="font-size:13px;font-weight:800;color:#16130A">₹{it["price"]}</div>
               <div style="font-size:10.5px;font-weight:800;color:#F8CD1B;background:#16130A;
                 border-radius:6px;padding:3px 9px;margin-top:4px">ADD</div></div>
-          </div>""" for it in res["items"])
+          </div>"""
+
+    fillers = ""
+    if res["items"]:
+        cards = "".join(_filler_card(it) for it in res["items"])
         fillers = (f'<div style="font-size:11.5px;font-weight:800;color:#16130A;margin:14px 0 8px">'
                    f'Add one of these to unlock it</div>{cards}')
 
@@ -844,11 +860,15 @@ def cart_logic_html(uid, cart_total):
     res = suggest_fillers(p, cart_total)
     gap = res["gap"]
     scores = adjacency_scores(p)
+    anchor = primary_suggested_category(p)
 
     rules = [
         ("Never-bought only", "Candidate categories exclude everything already in this user's basket."),
         ("Ranked by basket adjacency", "The same deterministic ranker the nudge agent uses, so the add-on still feels relevant."),
-        ("Closes the gap in one add", f"Items priced at or above the ₹{gap} gap come first, cheapest of those first."),
+        ("Coordinated with the push queue", f"Defaults to the same category the push-nudge agent is instructed to prefer"
+         f"{f' — <b>{esc(anchor)}</b> for this user' if anchor else ''} — so the two mechanics point at one next category, not two."),
+        ("Closes the gap in one add", f"Items priced at or above the ₹{gap} gap come first, cheapest of those first, "
+         "unless the anchor category can also close it."),
         ("One item per category", "The carousel spans distinct new categories rather than three of the same."),
     ]
     rule_html = "".join(f"""
@@ -869,7 +889,8 @@ def cart_logic_html(uid, cart_total):
     pool_html = "".join(f"""
       <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #F2F2EC">
         <div style="font-size:12.5px;font-weight:{'800' if c in offered else '600'};
-          color:{'#16130A' if c in offered else '#6B6B60'};flex:1;min-width:0">{esc(c)}</div>
+          color:{'#16130A' if c in offered else '#6B6B60'};flex:1;min-width:0">
+          {'🔗 ' if c == anchor else ''}{esc(c)}</div>
         <div style="font-size:11.5px;font-weight:700;color:#6B6B60;flex:none">adjacency {scores.get(c, 0)}</div>
         <div style="font-size:9.5px;font-weight:800;letter-spacing:.05em;border-radius:5px;padding:3px 7px;
           width:74px;text-align:center;flex:none;
@@ -901,7 +922,8 @@ def cart_logic_html(uid, cart_total):
   <div style="font-size:11px;font-weight:600;color:#6B6B60">ranked by basket adjacency</div>
 </div>
 <div style="font-size:11.5px;color:#6B6B60;margin-bottom:10px;line-height:1.45">Every candidate is from
-  a category this user has never purchased. Top {len(res['items'])} shown in the app, one per category.</div>
+  a category this user has never purchased. Top {len(res['items'])} shown in the app, one per category.
+  {'🔗 marks the category the push-nudge agent is instructed to prefer for this user.' if anchor else ''}</div>
 {pool_html}"""
 
 

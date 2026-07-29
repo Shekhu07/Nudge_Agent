@@ -1,6 +1,7 @@
 """Unit tests for the checkout cart-filler layer (deterministic, no LLM)."""
 from cart_filler import (FILLER_CATALOG, FREE_DELIVERY_THRESHOLD, never_bought_categories,
                           suggest_fillers)
+from friction_matching import primary_suggested_category
 
 
 def _profile(user_id="U1", top_categories=None):
@@ -68,7 +69,7 @@ def test_max_items_is_respected():
     assert len(res["items"]) <= 2
 
 
-def test_covering_items_are_prioritized_and_cheapest_first():
+def test_covering_items_are_prioritized_over_non_covering():
     p = _profile(top_categories=[])
     res = suggest_fillers(p, cart_total=150, max_items=len(FILLER_CATALOG))
     gap = res["gap"]
@@ -87,3 +88,32 @@ def test_no_never_bought_categories_left_returns_empty_items():
     res = suggest_fillers(p, cart_total=100)
     assert res["items"] == []
     assert res["qualifies"] is False
+
+
+# --------------------------- push-nudge / filler coordination ---------------------------
+
+def test_is_anchor_only_true_for_the_anchor_category():
+    p = _profile(user_id="SYN-555", top_categories=["groceries", "dairy"])
+    anchor = primary_suggested_category(p)
+    res = suggest_fillers(p, cart_total=150, max_items=len(FILLER_CATALOG))
+    for it in res["items"]:
+        assert it["is_anchor"] == (it["category"] == anchor)
+
+
+def test_anchor_category_sorts_first_within_its_tier():
+    p = _profile(user_id="SYN-901", top_categories=["household"])
+    anchor = primary_suggested_category(p)
+    res = suggest_fillers(p, cart_total=150, max_items=len(FILLER_CATALOG))
+    items = res["items"]
+    anchor_positions = [i for i, it in enumerate(items) if it["category"] == anchor]
+    if not anchor_positions:
+        return  # anchor category didn't survive to the offered set; nothing to assert
+    pos = anchor_positions[0]
+    tier_positions = [i for i, it in enumerate(items) if it["covers_gap"] == items[pos]["covers_gap"]]
+    assert pos == min(tier_positions)
+
+
+def test_is_anchor_false_for_everyone_when_no_candidates_left():
+    p = _profile(top_categories=list(FILLER_CATALOG.keys()))
+    res = suggest_fillers(p, cart_total=100)
+    assert all(not it["is_anchor"] for it in res["items"])

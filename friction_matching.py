@@ -80,6 +80,22 @@ def rank_suggestable_categories(profile, top_n=4):
     return pool
 
 
+def primary_suggested_category(profile):
+    """The single category the push-nudge agent is instructed to prefer for this user
+    (agent.py rule 3: "Prefer the highest-ranked candidate").
+
+    This is the coordination anchor between the two nudge mechanics: the push queue
+    (auto_targeting) and the checkout cart-filler (cart_filler) should point the same
+    user at the same next category by default, rather than each running an independent
+    ranker and risking a different pick. Deliberately reuses rank_suggestable_categories'
+    own top-4 candidate list (the exact list the LLM sees) rather than adding a Groq call
+    here — the cart-filler layer stays LLM-free and free of Groq quota cost, and the
+    ranker's #1 is a reliable proxy since the agent is prompted to prefer it.
+    """
+    pool = rank_suggestable_categories(profile, top_n=4)
+    return pool[0] if pool else None
+
+
 def load_themes():
     with open(DATA_DIR / "friction_themes.json") as f:
         return json.load(f)["themes"]

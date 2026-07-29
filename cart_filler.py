@@ -9,7 +9,8 @@ Deterministic — no LLM (the selection is mechanical and the copy is templated,
 costs no Groq quota). The FILLER_CATALOG below is SYNTHETIC demo data, not a real Blinkit
 catalog; prices are illustrative.
 """
-from friction_matching import SUGGESTABLE_CATEGORIES, _norm, rank_suggestable_categories
+from friction_matching import (SUGGESTABLE_CATEGORIES, _norm, primary_suggested_category,
+                               rank_suggestable_categories)
 
 # Free-delivery threshold (illustrative). Real Blinkit thresholds vary by city/time.
 FREE_DELIVERY_THRESHOLD = 199
@@ -56,21 +57,34 @@ def suggest_fillers(profile, cart_total, threshold=FREE_DELIVERY_THRESHOLD, max_
     Prefers items priced at or above the gap (a single add unlocks free delivery),
     falling back to the cheapest never-bought-category items if none individually
     covers it. Every item comes from a category the user has never bought.
+
+    Within each of those two tiers, the category `primary_suggested_category()` picked
+    for this user — the same category the push-nudge agent is instructed to prefer —
+    sorts first. This is the cross-mechanic coordination: absent a reason to do otherwise
+    (i.e. it doesn't cover the gap as well as another option), the checkout filler
+    reinforces the same next-category the push queue already nudges toward, rather than
+    two independent rankers potentially pointing the same user at two different
+    categories in the same week.
     """
     gap = threshold - cart_total
     if gap <= 0:
         return {"qualifies": True, "gap": 0, "threshold": threshold,
                 "cart_total": cart_total, "items": []}
 
+    anchor = primary_suggested_category(profile)
     candidates = []
     for cat in never_bought_categories(profile):
         for item in FILLER_CATALOG[cat]:
-            candidates.append({**item, "category": cat, "covers_gap": item["price"] >= gap})
+            candidates.append({**item, "category": cat, "covers_gap": item["price"] >= gap,
+                                "is_anchor": cat == anchor})
 
     # Items that unlock free delivery in one add first (cheapest such first), then the
-    # rest by price — keeps the offered add-on as close to the gap as possible.
-    covering = sorted([c for c in candidates if c["covers_gap"]], key=lambda c: c["price"])
-    non_covering = sorted([c for c in candidates if not c["covers_gap"]], key=lambda c: -c["price"])
+    # rest by price — keeps the offered add-on as close to the gap as possible. The
+    # anchor category sorts to the front of whichever tier it lands in.
+    covering = sorted([c for c in candidates if c["covers_gap"]],
+                       key=lambda c: (not c["is_anchor"], c["price"]))
+    non_covering = sorted([c for c in candidates if not c["covers_gap"]],
+                          key=lambda c: (not c["is_anchor"], -c["price"]))
     ordered = covering + non_covering
 
     # One filler per category so the carousel spans distinct new categories.
