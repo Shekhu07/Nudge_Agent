@@ -81,7 +81,7 @@ CSS = """
 :root{color-scheme:light}
 html,body,.gradio-container,.dark .gradio-container{background:#F4F5F3 !important}
 /* THEME-PROOFING (above the class rules; not !important so ours + inline still win) */
-.gradio-container *,.dark .gradio-container *{color:#16130A}
+.gradio-container.gradio-container.gradio-container *,.dark .gradio-container.gradio-container.gradio-container *{color:#16130A}
 body,.gradio-container,.gradio-container *,button,input,textarea{
   font-family:'Plus Jakarta Sans',system-ui,-apple-system,sans-serif !important}
 .gradio-container{max-width:1360px !important;margin:0 auto !important;padding:26px 28px 40px !important}
@@ -96,8 +96,8 @@ footer,.footer,.show-api,.built-with,.settings{display:none !important}
 .nb-brand{display:flex;align-items:center;gap:14px}
 .nb-logo{width:46px;height:46px;border-radius:13px;background:#F8CD1B;display:flex;
   align-items:center;justify-content:center;font-size:24px;box-shadow:0 4px 14px rgba(248,205,27,.45)}
-.nb-t1{font-size:19px;font-weight:800;letter-spacing:-.02em;color:#16130A}
-.nb-t2{font-size:13px;font-weight:500;color:#63635A}
+.nb-t1.nb-t1.nb-t1{font-size:19px;font-weight:800;letter-spacing:-.02em;color:#16130A}
+.nb-t2.nb-t2.nb-t2{font-size:13px;font-weight:500;color:#63635A}
 .nb-pill{display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:700;
   padding:8px 14px;border-radius:999px}
 .nb-dot{width:7px;height:7px;border-radius:50%;display:inline-block}
@@ -105,10 +105,10 @@ footer,.footer,.show-api,.built-with,.settings{display:none !important}
 /* cards */
 .nb-card{background:#fff !important;border:1px solid #E7E8E2 !important;border-radius:20px !important;
   padding:20px 22px !important;box-shadow:0 1px 2px rgba(0,0,0,.03) !important;margin-bottom:18px !important}
-.nb-eyebrow{font-size:12px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:#6B6B60}
+.nb-eyebrow.nb-eyebrow.nb-eyebrow{font-size:12px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:#6B6B60}
 .nb-tile{flex:1;background:#F7F8F5;border-radius:12px;padding:11px 13px}
-.nb-tile-k{font-size:11px;font-weight:700;color:#6B6B60;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px}
-.nb-tile-v{font-size:14px;font-weight:700;color:#16130A}
+.nb-tile-k.nb-tile-k.nb-tile-k{font-size:11px;font-weight:700;color:#6B6B60;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px}
+.nb-tile-v.nb-tile-v.nb-tile-v{font-size:14px;font-weight:700;color:#16130A}
 
 /* user chips (Gradio buttons dressed as the design's chips) */
 .nb-chip{display:flex !important;align-items:center !important;gap:11px !important;
@@ -162,10 +162,10 @@ footer,.footer,.show-api,.built-with,.settings{display:none !important}
   margin-top:16px !important}
 
 /* dark reasoning card */
-.nb-dark{background:#16130A;border-radius:20px;padding:22px;color:#F4F5F3}
-.nb-dark *{color:#CFD0C6}
-.nb-dark .k{color:#F8CD1B;font-size:12px;font-weight:800;letter-spacing:.09em;text-transform:uppercase}
-.nb-dark .h{color:#fff;font-size:13px;font-weight:800;margin-bottom:3px}
+.nb-dark.nb-dark.nb-dark{background:#16130A;border-radius:20px;padding:22px;color:#F4F5F3}
+.nb-dark.nb-dark.nb-dark *{color:#CFD0C6}
+.nb-dark.nb-dark.nb-dark .k{color:#F8CD1B;font-size:12px;font-weight:800;letter-spacing:.09em;text-transform:uppercase}
+.nb-dark.nb-dark.nb-dark .h{color:#fff;font-size:13px;font-weight:800;margin-bottom:3px}
 .nb-ic{width:30px;height:30px;border-radius:9px;background:rgba(248,205,27,.16);display:flex;
   align-items:center;justify-content:center;font-size:15px;flex:none}
 
