@@ -697,7 +697,7 @@ def _lock_screen(inner, queued, total):
   <div style="border-radius:32px;overflow:hidden;background:linear-gradient(160deg,#3A4256,#1D2130 55%,#12141C);
     padding:14px 12px 18px;min-height:430px">
     <div style="display:flex;align-items:center;justify-content:space-between;padding:0 10px 6px;
-      font-size:11.5px;font-weight:700;color:#fff"><span>9:41</span><span>📶 &nbsp;🔋</span></div>
+      font-size:11.5px;font-weight:700;color:#fff"><span style="color:#fff">9:41</span><span style="color:#fff">📶 &nbsp;🔋</span></div>
     <div style="text-align:center;margin:14px 0 18px">
       <div style="font-size:12.5px;font-weight:600;color:rgba(255,255,255,.82)">Saturday, 26 July</div>
       <div style="font-size:52px;font-weight:300;color:#fff;line-height:1.05;letter-spacing:-.02em">9:41</div>
