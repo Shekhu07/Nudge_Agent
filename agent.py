@@ -89,15 +89,22 @@ def _client():
     return _CLIENT
 
 
-def _build_user_prompt(profile, theme, match_reason):
-    candidates = rank_suggestable_categories(profile)
+def _build_user_prompt(profile, theme, match_reason, exclude_category=None):
+    candidates = rank_suggestable_categories(profile, exclude=exclude_category)
     ranked_list = "\n".join(f"  {i}. {c}" for i, c in enumerate(candidates, 1))
+    exclude_note = (
+        f'\nNote: this user just added a checkout cart-filler item from "{exclude_category}" '
+        "to their cart. That category is intentionally excluded from the candidate list below "
+        "— pick a DIFFERENT never-bought category. The project's core thesis is nudging toward "
+        "a new category every month, not repeating the one just trialed.\n"
+        if exclude_category else ""
+    )
     return f"""Matched friction theme: {theme['name']}
 Theme description: {theme['description']}
 Theme lead-with signals: {', '.join(theme.get('lead_with', []))}
 Theme in primary nudge scope: {not theme.get('out_of_primary_scope', False)}
 Why this user matched: {match_reason}
-
+{exclude_note}
 User (synthetic profile):
 - Orders: {profile['order_frequency']}
 - Existing categories: {', '.join(profile['top_categories'])}
@@ -111,7 +118,7 @@ their existing basket) — choose exactly ONE per rule 3:
 Write the nudge now."""
 
 
-def generate_nudge(profile, theme, match_reason, client=None):
+def generate_nudge(profile, theme, match_reason, client=None, exclude_category=None):
     client = client or _client()
     resp = client.chat.completions.create(
         model=GROQ_MODEL,
@@ -120,7 +127,7 @@ def generate_nudge(profile, theme, match_reason, client=None):
         timeout=20,
         messages=[
             {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": _build_user_prompt(profile, theme, match_reason)},
+            {"role": "user", "content": _build_user_prompt(profile, theme, match_reason, exclude_category)},
         ],
     )
     out = json.loads(resp.choices[0].message.content)

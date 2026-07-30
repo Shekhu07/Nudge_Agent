@@ -58,9 +58,16 @@ def adjacency_scores(profile):
     return scores
 
 
-def rank_suggestable_categories(profile, top_n=4):
+def rank_suggestable_categories(profile, top_n=4, exclude=None):
     """Return the top_n best-fit suggestable categories for a profile, ranked by
     adjacency to its existing basket and excluding any overlap.
+
+    `exclude` optionally removes one or more categories from the pool on top of the
+    existing-basket exclusion — used to keep the push-nudge agent from repeating a
+    category the shopper just trialed via the checkout cart-filler (the "Cart -> Nudge
+    flow" feature, deployed standalone on Render — see render_cart_nudge/ in the main
+    Blinkit_PRD repo, not in this clone): each mechanic should point at a DIFFERENT
+    never-bought category, not the same one twice.
 
     Deterministic. Ties break alphabetically. Because several synthetic profiles share
     near-identical baskets, a per-user rotation is applied within the equally-adjacent
@@ -69,6 +76,9 @@ def rank_suggestable_categories(profile, top_n=4):
     pick. Stable per user_id, so results are reproducible.
     """
     existing = {_norm(c) for c in profile.get("top_categories", [])}
+    if exclude:
+        excl = {exclude} if isinstance(exclude, str) else exclude
+        existing |= {_norm(c) for c in excl}
     scores = adjacency_scores(profile)
     ranked = [c for c in sorted(SUGGESTABLE_CATEGORIES, key=lambda c: (-scores[c], c))
               if _norm(c) not in existing]
