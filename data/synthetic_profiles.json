@@ -2,8 +2,8 @@
   "_meta": {
     "SYNTHETIC": true,
     "warning": "These are SYNTHETIC user profiles, not real Blinkit customer data. They are hand-authored to reflect the behavior patterns of the real Part 2 'stuck segment' (heavy, habitual, narrow-category buyers) documented in docs/problem_statement.md. Blinkit's real order data was not available for this fellowship MVP; this is the standard, expected substitute and is labeled as such in the deck.",
-    "grounded_in": "docs/problem_statement.md sections 1-4 (real N=25 Phase 3 survey)",
-    "segment_reference": "14/25 (56%) survey respondents described themselves as 'mostly stick to the same categories'",
+    "grounded_in": "docs/problem_statement.md sections 1-4 (real N=31 Phase 3 survey, frozen 2026-07-28)",
+    "segment_reference": "18/31 (58%) survey respondents described themselves as 'mostly stick to the same categories'",
     "display_fields_note": "display_name, initials, avatar_bg, blurb, tenure, avg_basket, locality and orders are DISPLAY-ONLY fields added for the redesigned console/phone UI. They are SYNTHETIC like the rest of this file and are not real customer data. The behavioural fields (order_frequency, top_categories, recent_incident, stated_barrier) remain the ones grounded in the real Part 2 survey patterns and are what the matcher and agent use."
   },
   "profiles": [

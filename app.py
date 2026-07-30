@@ -292,8 +292,17 @@ def reasoning_html(theme, r=None, p=None):
                f'margin:10px 0 20px;overflow:hidden"><div style="height:100%;border-radius:99px;'
                f'background:linear-gradient(90deg,#F8CD1B,#1F9D55);width:{pct}%;'
                f'animation:barGrow .8s cubic-bezier(.2,.7,.3,1)"></div></div>')
-    else:
+    elif theme.get("out_of_primary_scope"):
+        # Genuinely outside the trust-driven scope (low_intent_no_incident) — the nudge
+        # mechanic is not the right lever and the UI must say so.
         meter, bar = ('<div style="font-size:12px;font-weight:700;color:#C9CABF">out of primary scope</div>',
+                      '<div style="height:20px"></div>')
+    else:
+        # In scope, but a sub-theme Part 1 never counted separately (packaging_fulfillment).
+        # A null share is NOT the same as out-of-scope — saying so contradicted the
+        # (correctly absent) out-of-scope banner.
+        meter, bar = ('<div style="font-size:12px;font-weight:700;color:#C9CABF">'
+                      'sub-theme · not separately counted in Part 1</div>',
                       '<div style="height:20px"></div>')
 
     alts = alternatives_html(p, r) if p else ""
@@ -969,7 +978,7 @@ def about_html():
     live Space link will never see the GitHub README."""
     chain = [
         ("Part 1", "Discovery", "Two-Step Gated extraction over 1,094 gate-passing extractions — real, locked evidence counts."),
-        ("Part 2", "Survey", "N=25 Phase 3 survey; 14/25 (56%) self-reported “mostly stick to the same categories.”"),
+        ("Part 2", "Survey", "N=31 Phase 3 survey (frozen 2026-07-28); 18/31 (58%) self-reported “mostly stick to the same categories.”"),
         ("Part 3", "Problem statement", "~70% of category stagnation is quality/trust-driven (770/1,094); the rest is low-intent."),
         ("Part 4", "This agent", "Matches a user to the closest friction theme, then an LLM writes the nudge — this MVP."),
     ]
@@ -983,7 +992,7 @@ def about_html():
 
     ledger = [
         ("Friction theme evidence share (70%, 770/1,094)", "REAL", "Locked Part 1 numbers — shown verbatim, never an LLM-invented confidence score."),
-        ("Trust-driver ranking (refund #1, freshness #2)", "REAL", "Q15 survey result (11/25, 9/25 picks) — fixed as the agent's rule 1, not a per-user guess."),
+        ("Trust-driver ranking (refund #1, freshness #2)", "REAL", "Q15 survey result (13/31, 10/31 picks) — fixed as the agent's rule 1, not a per-user guess."),
         ("Friction matching (which theme a user gets)", "REAL LOGIC", "Deterministic rules in friction_matching.py; no LLM involved in the match itself."),
         ("Candidate category ranking (“also considered”)", "REAL LOGIC", "Integer basket-adjacency weights, summed and shown as-is — not the 0.88/0.61/0.44-style confidence scores the original mockup invented."),
         ("Nudge copy, headline, reasoning", "LIVE LLM", "Generated per user per click by Groq llama-3.3-70b-versatile — not looked up from a fixed table."),

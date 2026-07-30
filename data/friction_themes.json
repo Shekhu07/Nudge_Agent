@@ -3,8 +3,8 @@
     "description": "Part 1/3 friction themes the Category Nudge Agent matches against. Numbers are the real, locked Part 1 discovery-engine results (see docs/problem_statement.md and docs/architecture.md). NOT synthetic — these are the actual evidence counts.",
     "source": "docs/problem_statement.md sections 2 and 4; Part 1 Two-Step Gated extraction (1,094 gate-passing extractions)",
     "primary_confidence_drivers_ranked": [
-      "no_questions_asked_return_refund_guarantee (Q15 top driver, 11/25 picks)",
-      "visible_quality_freshness_guarantee (Q15 second driver, 9/25 picks)"
+      "no_questions_asked_return_refund_guarantee (Q15 top driver, 13/31 picks)",
+      "visible_quality_freshness_guarantee (Q15 second driver, 10/31 picks)"
     ],
     "scope_note": "Only addresses the ~50% of category stagnation that is quality/trust-driven, not the low-intent half. Nudge must not overclaim."
   },
