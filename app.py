@@ -486,7 +486,12 @@ def _phone_shell(p, inner, hint=None):
       <div style="margin-top:12px;background:#fff;border-radius:11px;padding:10px 13px;font-size:13px;
         color:#6B6B60;font-weight:500;display:flex;align-items:center;gap:8px">🔍 Search “{esc(hint)}”</div>
     </div>
-    <div style="padding:16px 15px 22px;background:#F7F8F5;min-height:340px">{inner}</div>
+    <div style="padding:16px 15px 22px;background:#F7F8F5;min-height:520px;display:flex;
+      flex-direction:column">
+      <div style="flex:1">{inner}</div>
+      <div style="width:120px;height:5px;border-radius:99px;background:rgba(0,0,0,.18);
+        margin:18px auto 2px"></div>
+    </div>
   </div></div>
   <div style="font-size:12px;color:#63635A;font-weight:500;text-align:center;max-width:300px;line-height:1.5">
     Nudge leads with the two research-ranked trust drivers before the offer — not a generic discount.</div>
@@ -702,14 +707,16 @@ def _lock_screen(inner, queued, total):
 <div style="width:320px;margin:0 auto;background:#0E0E0C;border-radius:42px;padding:11px;
   box-shadow:0 24px 60px rgba(0,0,0,.22)">
   <div style="border-radius:32px;overflow:hidden;background:linear-gradient(160deg,#3A4256,#1D2130 55%,#12141C);
-    padding:14px 12px 18px;min-height:430px">
+    padding:14px 12px 18px;min-height:660px;display:flex;flex-direction:column">
     <div style="display:flex;align-items:center;justify-content:space-between;padding:0 10px 6px;
       font-size:11.5px;font-weight:700;color:#fff"><span style="color:#fff">9:41</span><span style="color:#fff">📶 &nbsp;🔋</span></div>
     <div style="text-align:center;margin:14px 0 18px">
       <div style="font-size:12.5px;font-weight:600;color:rgba(255,255,255,.82)">Saturday, 26 July</div>
       <div style="font-size:52px;font-weight:300;color:#fff;line-height:1.05;letter-spacing:-.02em">9:41</div>
     </div>
-    <div>{inner}</div>
+    <div style="flex:1">{inner}</div>
+    <div style="width:120px;height:5px;border-radius:99px;background:rgba(255,255,255,.35);
+      margin:18px auto 2px"></div>
   </div>
 </div>
 <div style="text-align:center;font-size:11.5px;font-weight:600;color:#6B6B60;margin-top:12px">
