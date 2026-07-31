@@ -99,7 +99,7 @@ def _client():
     return _CLIENT
 
 
-def _build_user_prompt(profile, theme, match_reason, exclude_category=None):
+def _build_user_prompt(profile, theme, match_reason, exclude_category=None, forced_category=None):
     candidates = rank_suggestable_categories(profile, exclude=exclude_category)
     ranked_list = "\n".join(f"  {i}. {c}" for i, c in enumerate(candidates, 1))
     exclude_note = (
@@ -109,26 +109,43 @@ def _build_user_prompt(profile, theme, match_reason, exclude_category=None):
         "a new category every month, not repeating the one just trialed.\n"
         if exclude_category else ""
     )
+    forced_note = (
+        f'\nCategory selection for this run: already finalized as "{forced_category}" by the '
+        "deterministic ranker below — it's one of the genuinely adjacent candidates (adjacency "
+        "score > 0), just rotated by a per-run random pick among them instead of always defaulting "
+        "to the single top-ranked one, so runs vary without ever suggesting an irrelevant category. "
+        f'You MUST write the nudge for "{forced_category}" regardless of its rank position in the '
+        "list below — do not substitute a different category, and explain the real adjacency reason "
+        "for THIS category in why_category (per rule 3's own requirement to justify any pick that "
+        "isn't the ranker's literal #1).\n"
+        if forced_category else ""
+    )
+    choose_line = (
+        "The category has already been chosen for you — see the note above. Do not pick a "
+        "different one."
+        if forced_category else
+        "Prioritized candidate categories (ranked best-fit first for THIS user, none overlap\n"
+        "their existing basket) — choose exactly ONE per rule 3:\n"
+        f"{ranked_list}"
+    )
     return f"""Matched friction theme: {theme['name']}
 Theme description: {theme['description']}
 Theme lead-with signals: {', '.join(theme.get('lead_with', []))}
 Theme in primary nudge scope: {not theme.get('out_of_primary_scope', False)}
 Why this user matched: {match_reason}
-{exclude_note}
+{exclude_note}{forced_note}
 User (synthetic profile):
 - Orders: {profile['order_frequency']}
 - Existing categories: {', '.join(profile['top_categories'])}
 - Recent incident: {json.dumps(profile.get('recent_incident'))}
 - In their words: "{profile.get('stated_barrier', '')}"
 
-Prioritized candidate categories (ranked best-fit first for THIS user, none overlap
-their existing basket) — choose exactly ONE per rule 3:
-{ranked_list}
+{choose_line}
 
 Write the nudge now."""
 
 
-def generate_nudge(profile, theme, match_reason, client=None, exclude_category=None):
+def generate_nudge(profile, theme, match_reason, client=None, exclude_category=None, forced_category=None):
     client = client or _client()
     resp = client.chat.completions.create(
         model=GROQ_MODEL,
@@ -137,7 +154,7 @@ def generate_nudge(profile, theme, match_reason, client=None, exclude_category=N
         timeout=20,
         messages=[
             {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": _build_user_prompt(profile, theme, match_reason, exclude_category)},
+            {"role": "user", "content": _build_user_prompt(profile, theme, match_reason, exclude_category, forced_category)},
         ],
     )
     out = json.loads(resp.choices[0].message.content)

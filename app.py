@@ -15,6 +15,7 @@ Local run:  python app.py   (http://127.0.0.1:7860)
 """
 import html
 import os
+import random
 from concurrent.futures import ThreadPoolExecutor
 
 import gradio as gr
@@ -1070,6 +1071,22 @@ def on_select(uid):
             phone_html(p), measurement_plan_html()] + chips
 
 
+def _rotated_category(p):
+    """Randomly picks among this user's genuinely-adjacent candidates (adjacency score > 0,
+    drawn from the exact same top-4 pool the "Also considered — ranked" panel already
+    displays) instead of always defaulting to the ranker's #1. Every pick is still a real,
+    basket-relevant category — only WHICH qualifying one gets used varies per click, so
+    repeated demo runs show variety without the agent ever suggesting something arbitrary.
+    Falls back to the full pool if nothing scores above 0 (shouldn't happen in practice,
+    every basket we have scores something, but kept as a safety net)."""
+    pool = rank_suggestable_categories(p)
+    if not pool:
+        return None
+    scores = adjacency_scores(p)
+    candidates = [c for c in pool if scores.get(c, 0) > 0] or pool
+    return random.choice(candidates)
+
+
 def on_generate(uid):
     p = BY_ID[uid]
     theme, reason = match_profile_to_theme(p, THEMES)
@@ -1079,7 +1096,8 @@ def on_generate(uid):
                'server. Add it in the Space Settings → Variables and secrets.</div></div>')
         return err, phone_html(p), measurement_plan_html()
     try:
-        r = generate_nudge(p, theme, reason)   # REAL Groq call
+        forced = _rotated_category(p)
+        r = generate_nudge(p, theme, reason, forced_category=forced)   # REAL Groq call
     except Exception as e:  # noqa: BLE001
         return (f'<div class="nb-dark"><div class="k">Error</div>'
                 f'<div style="margin-top:8px;font-size:13px">{esc(e)}</div></div>',
