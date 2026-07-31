@@ -24,8 +24,8 @@ DELIVERY_FEE = 35
 FILLER_CATALOG = {
     "home & cleaning":        [{"name": "Stainless Steel Cleaner", "price": 65},
                                {"name": "Microfiber Cloth (3 pack)", "price": 55}],
-    "stationery & office":    [{"name": "Sticky Notes (400 sheets)", "price": 60},
-                               {"name": "Gel Pen Set (5)", "price": 45}],
+    "books, toys & stationery": [{"name": "Sticky Notes (400 sheets)", "price": 60},
+                               {"name": "Mini Puzzle Toy", "price": 70}],
     "kitchen & dining":       [{"name": "Silicone Spatula", "price": 70},
                                {"name": "Microfibre Kitchen Towel", "price": 50}],
     "packaged gourmet foods": [{"name": "Artisan Cracker Pack", "price": 75},
@@ -40,6 +40,15 @@ FILLER_CATALOG = {
                                {"name": "Catnip Toy", "price": 60}],
     "baby care":              [{"name": "Baby Wipes (72s)", "price": 75},
                                {"name": "Baby Lotion Mini", "price": 65}],
+    # Deliberately non-prescription, generic OTC/hygiene items only — see the "pharmacy is a
+    # KNOWN COMPROMISE" note in friction_matching.py. No medicine-like items in a demo catalog.
+    "pharmacy":               [{"name": "Adhesive Bandages Pack", "price": 45},
+                               {"name": "Hand Sanitizer (50ml)", "price": 55}],
+    # Small/cheap accessories only, matching the "no full electronics" note in
+    # friction_matching.py — the filler mechanic needs sub-₹80 items, which full electronics
+    # (power banks, chargers) rarely are.
+    "electronics accessories": [{"name": "USB-C Cable (1m)", "price": 79},
+                               {"name": "Phone Grip Stand", "price": 65}],
 }
 
 

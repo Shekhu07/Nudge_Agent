@@ -50,6 +50,15 @@ Hard rules:
    only when the theme is in primary scope; if the theme is out of primary scope, return an
    empty string for social_proof_line.
 6. Keep the nudge under 45 words. Keep the reasoning under 40 words.
+7. Category-conditional third driver: "electronics accessories" is a poor fit for the
+   freshness framing in rule 1 (there is no such thing as "fresh" electronics) and real
+   e-commerce/quick-commerce platforms build electronics trust through pre-acceptance
+   inspection or warranty, not a freshness promise. So ONLY when suggested_category is
+   "electronics accessories": lead the headline/body with an open-box, inspect-before-you-accept
+   assurance and populate inspect_line with it as the PRIMARY driver ahead of refund_line and
+   fresh_line. refund_line and fresh_line are still REQUIRED non-empty fields (rule 1/4 still
+   apply) but reframe fresh_line as a genuine/certified-brand signal, not literal freshness.
+   For every OTHER category, inspect_line MUST be an empty string — it is not a generic driver.
 
 Return STRICT JSON only, no prose around it:
 {
@@ -59,7 +68,8 @@ Return STRICT JSON only, no prose around it:
   "headline": "in-app card headline: a compelling 4-8 word phrase, not one word",
   "body": "in-app card body: TWO full sentences (25-40 words) in second person. Sentence 1 names the habit you noticed in their order history. Sentence 2 invites them to try the new category.",
   "refund_line": "the refund/return guarantee as a concrete 5-9 word phrase, e.g. 'Instant refund if quality isn't perfect'",
-  "fresh_line": "the quality/freshness signal as a concrete 5-9 word phrase, e.g. 'Verified brands, sealed and batch-checked'",
+  "fresh_line": "the quality/freshness signal as a concrete 5-9 word phrase, e.g. 'Verified brands, sealed and batch-checked' (for electronics accessories: a genuine/certified-brand phrase instead, e.g. 'Certified genuine, factory-sealed box')",
+  "inspect_line": "ONLY for suggested_category == 'electronics accessories': the open-box/inspect-before-accepting assurance as a concrete 5-9 word phrase, e.g. 'Open and check before you accept'. Empty string for every other category.",
   "social_proof_line": "one short peer-reassurance line (6-12 words) addressing the user's specific fear; NO invented numbers, ratings, star counts, or buyer counts; empty string when the theme is out of primary scope",
   "cta": "button label, 2-5 words, action-first, e.g. 'Add starter set to cart'",
   "product": "one concrete example product in the suggested category, 3-7 words, e.g. 'Daily Care Set (face wash + lotion)'",

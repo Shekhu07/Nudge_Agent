@@ -322,8 +322,11 @@ def reasoning_html(theme, r=None, p=None):
   {pre}
 </div>"""
 
-    drivers = [("Refund guarantee", r.get("refund_line", "")),
-               ("Freshness / quality signal", r.get("fresh_line", ""))]
+    drivers = []
+    if r.get("inspect_line"):
+        drivers.append(("Inspect before accepting", r.get("inspect_line", "")))
+    drivers += [("Refund guarantee", r.get("refund_line", "")),
+                ("Freshness / quality signal", r.get("fresh_line", ""))]
     if r.get("social_proof_line"):
         drivers.append(("Peer social proof", r.get("social_proof_line", "")))
     d_html = "".join(f"""
@@ -514,6 +517,10 @@ def phone_html(p, r=None):
   <div style="padding:15px 16px 17px">
     <div style="font-size:13.5px;line-height:1.55;color:#44443B;margin-bottom:13px">{esc(r.get('body'))}</div>
     <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:15px">
+      {(f'''<div style="display:flex;align-items:center;gap:9px;background:#E7F6F6;border:1px solid #BFE6E6;
+        border-radius:11px;padding:9px 12px"><div style="font-size:16px">📦</div>
+        <div style="font-size:12.5px;font-weight:700;color:#0B6E6E">{esc(r.get('inspect_line'))}</div></div>'''
+        if r.get('inspect_line') else '')}
       {(f'''<div style="display:flex;align-items:center;gap:9px;background:#EFF4FF;border:1px solid #D6E1FB;
         border-radius:11px;padding:9px 12px"><div style="font-size:16px">🛡️</div>
         <div style="font-size:12.5px;font-weight:700;color:#2551C6">{esc(r.get('refund_line'))}</div></div>'''

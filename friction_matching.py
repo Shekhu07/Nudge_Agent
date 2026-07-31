@@ -14,7 +14,8 @@ DATA_DIR = Path(__file__).parent / "data"
 SUGGESTABLE_CATEGORIES = [
     "personal care", "home & cleaning", "baby care", "pet supplies",
     "beauty & cosmetics", "packaged gourmet foods", "health & wellness",
-    "kitchen & dining", "stationery & office",
+    "kitchen & dining", "books, toys & stationery", "electronics accessories",
+    "pharmacy",
 ]
 
 # Adjacency weights: how strongly an EXISTING category pulls toward each suggestable one.
@@ -25,6 +26,26 @@ SUGGESTABLE_CATEGORIES = [
 # So grocery/produce baskets deliberately pull toward DISTINCT, non-grooming categories
 # (kitchen & dining, home & cleaning, packaged gourmet, pet supplies, baby care); the
 # grooming categories only score when the basket actually signals them.
+#
+# "electronics accessories" (small/cheap items only — chargers, cables, power banks, not
+# full electronics) only scores from "household", deliberately kept narrow rather than
+# given a broad default weight: unlike the other suggestable categories, a refund/freshness
+# guarantee is a weak trust lever for electronics — real e-commerce platforms build
+# electronics trust via warranty/authenticity or pre-acceptance inspection instead, not a
+# refund promise. So this category is paired with a separate inspect-before-accepting
+# driver in agent.py rather than the standard two, and should surface only when
+# basket-adjacency genuinely supports it, not as a frequent default.
+#
+# "pharmacy" is a KNOWN COMPROMISE, kept on record rather than hidden: real pharmacy trust
+# is built through licensed-pharmacy sourcing and prescription verification, not a
+# refund/freshness promise, and "no-questions-asked refund" doesn't meaningfully apply to
+# medicine. Added anyway on explicit instruction, using the standard two-driver copy rather
+# than a bespoke pharmacy-specific driver (no rule 7-style carve-out in agent.py). Scored
+# narrowly from "personal_care" only.
+#
+# "books, toys & stationery" replaces the old "stationery & office" label with a broader,
+# lower-stakes grouping (matches how it's commonly grouped in retail) — the standard two
+# drivers fit fine here per research; no special handling needed.
 import hashlib
 
 CATEGORY_ADJACENCY = {
@@ -33,8 +54,9 @@ CATEGORY_ADJACENCY = {
     "dairy":         {"baby care": 2, "packaged gourmet foods": 1, "health & wellness": 1},
     "snacks":        {"packaged gourmet foods": 2, "kitchen & dining": 1},
     "beverages":     {"packaged gourmet foods": 2, "kitchen & dining": 1},
-    "household":     {"home & cleaning": 2, "stationery & office": 1, "pet supplies": 1, "kitchen & dining": 1},
-    "personal_care": {"beauty & cosmetics": 2, "health & wellness": 1, "baby care": 1},
+    "household":     {"home & cleaning": 2, "books, toys & stationery": 1, "pet supplies": 1, "kitchen & dining": 1,
+                       "electronics accessories": 1},
+    "personal_care": {"beauty & cosmetics": 2, "health & wellness": 1, "baby care": 1, "pharmacy": 1},
 }
 
 
