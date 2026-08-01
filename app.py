@@ -512,6 +512,26 @@ def _phone_shell(p, inner, hint=None):
 </div>"""
 
 
+def _secondary_category(p, r):
+    """Deterministic "you can also try" pick — costs no extra Groq call.
+
+    Reuses the SAME ranked, per-user-rotated pool already computed for the operator's
+    "Also considered — ranked" panel (rank_suggestable_categories), so the shopper-facing
+    hint and the PM-facing panel always point at consistent alternatives instead of two
+    independently-computed pickers that could disagree with each other.
+
+    Returns the next-best candidate that ISN'T the one actually nudged, or None if the
+    pool is exhausted (shouldn't happen with 11 suggestable categories, but a profile
+    with a very full basket could in principle leave nothing else to suggest).
+    """
+    pool = rank_suggestable_categories(p)
+    picked = str((r or {}).get("suggested_category", "")).lower().strip()
+    for c in pool:
+        if c.lower() != picked:
+            return c
+    return None
+
+
 def phone_html(p, r=None):
     if not r:
         inner = """
@@ -527,6 +547,7 @@ def phone_html(p, r=None):
     # as "Kitchen &Amp; Dining". Hits the 5 categories containing "&".
     cat = esc(r.get("suggested_category", "").title())
     emoji = esc(r.get("emoji") or "🛍️")
+    secondary = _secondary_category(p, r)
     inner = f"""
 <div class="nb-pop" style="background:#fff;border-radius:20px;overflow:hidden;
   box-shadow:0 6px 22px rgba(0,0,0,.08);border:1px solid #EFEFE9">
@@ -569,6 +590,11 @@ def phone_html(p, r=None):
       padding:14px;border-radius:13px;text-align:center">{esc(r.get('cta'))}</div>
     <div style="text-align:center;font-size:11px;font-weight:600;color:#6B6B60;margin-top:9px">
       First order in this category · {cat}</div>
+    {(f'''<div style="margin-top:11px;display:flex;align-items:center;justify-content:center;
+      gap:7px;background:#F7F8F5;border:1px dashed #DADBD3;border-radius:11px;padding:9px 12px">
+      <span style="font-size:11px;color:#6B6B60;font-weight:600">You can also try</span>
+      <span style="font-size:11.5px;color:#16130A;font-weight:800">{esc(secondary.title())}</span>
+    </div>''' if secondary else '')}
   </div>
 </div>
 <div style="text-align:center;font-size:11px;color:#6B6B60;margin-top:16px;font-weight:600">

@@ -91,22 +91,67 @@ def rank_suggestable_categories(profile, top_n=4, exclude=None):
     Blinkit_PRD repo, not in this clone): each mechanic should point at a DIFFERENT
     never-bought category, not the same one twice.
 
-    Deterministic. Ties break alphabetically. Because several synthetic profiles share
-    near-identical baskets, a per-user rotation is applied within the equally-adjacent
-    top pool so similar profiles don't all surface the same #1 — every category in the
-    pool already passed the adjacency bar, so this is a variety tiebreak, not a random
-    pick. Stable per user_id, so results are reproducible.
+    Deterministic and stable per user_id, so results are reproducible.
+
+    TIE-BREAK, fixed 2026-08-01: candidates are grouped into score tiers (highest
+    adjacency first). Whole tiers that fit within top_n are taken entirely, in
+    alphabetical order (order doesn't matter for a fully-included tier). The BOUNDARY
+    tier — the one that only partially fits — is rotated by a per-user, per-tier seed
+    before taking the remaining slots, rather than always taking its alphabetically-
+    first members.
+
+    Why this matters: the previous version sorted ALL candidates by (-score, name) and
+    sliced to top_n in one step, so a boundary tie was always broken alphabetically.
+    For every profile whose basket touched "household", categories tied at score 1 for
+    the last slot (electronics accessories, books/toys & stationery, pet supplies, ...)
+    always lost to whichever came first alphabetically — every single time, for every
+    profile, forever, regardless of the per-click rotation feature in app.py (which
+    only reorders whichever four categories already survived the cut). Verified:
+    "electronics accessories" could never enter the candidate list for ANY of the 8
+    synthetic profiles under the old tie-break, even though 3 of them had a genuine
+    adjacency score > 0 for it.
+
+    The fix makes this fair across ANY category caught in a boundary tie, not just
+    electronics — a category with real (nonzero) adjacency now gets a real, reproducible
+    per-user chance to be considered instead of losing purely to alphabetical order.
+    Categories with genuinely zero adjacency for a profile are never promoted; this only
+    changes who wins among candidates that already passed the relevance bar.
     """
     existing = {_norm(c) for c in profile.get("top_categories", [])}
     if exclude:
         excl = {exclude} if isinstance(exclude, str) else exclude
         existing |= {_norm(c) for c in excl}
     scores = adjacency_scores(profile)
-    ranked = [c for c in sorted(SUGGESTABLE_CATEGORIES, key=lambda c: (-scores[c], c))
-              if _norm(c) not in existing]
-    pool = ranked[:top_n] or [c for c in SUGGESTABLE_CATEGORIES if _norm(c) not in existing]
+    candidates = [c for c in SUGGESTABLE_CATEGORIES if _norm(c) not in existing]
+    if not candidates:
+        return []
+
+    seed = int(hashlib.md5(str(profile.get("user_id", "")).encode()).hexdigest(), 16)
+
+    tiers = {}
+    for c in candidates:
+        tiers.setdefault(scores[c], []).append(c)
+    tier_scores = sorted(tiers, reverse=True)
+
+    pool = []
+    for i, sc in enumerate(tier_scores):
+        tier = sorted(tiers[sc])
+        if len(pool) + len(tier) <= top_n:
+            pool.extend(tier)
+            continue
+        need = top_n - len(pool)
+        if need <= 0:
+            break
+        # Rotate this boundary tier by a seed that varies per tier index, so it
+        # doesn't collapse to the same offset as the final full-pool rotation below.
+        tier_offset = (seed + i) % len(tier)
+        rotated_tier = tier[tier_offset:] + tier[:tier_offset]
+        pool.extend(rotated_tier[:need])
+        break
+
+    if not pool:
+        pool = candidates[:]
     if len(pool) > 1:
-        seed = int(hashlib.md5(str(profile.get("user_id", "")).encode()).hexdigest(), 16)
         offset = seed % len(pool)
         pool = pool[offset:] + pool[:offset]
     return pool
