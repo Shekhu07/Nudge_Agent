@@ -645,24 +645,48 @@ def auto_eligibility_html(min_tenure=MIN_TENURE_MONTHS):
       </div>""" for i, (n, lab, sub) in enumerate(stages))
 
     def row(p, why, ok):
+        """One profile row in the eligibility split.
+
+        The two sides carry very different payloads, so they get different layouts.
+        An in-queue row's chips are two short tokens ("Daily ✓", "16mo ✓") and sit
+        happily beside the name. A held-back row's payload is a full sentence
+        explaining the exclusion — pinning that beside the name (as a single shared
+        layout did) left ~120px for the name column inside the half-width card, so
+        names wrapped and the meta line broke to roughly one word per line.
+        The reason therefore gets its own full-width row underneath instead.
+        """
         months = parse_tenure_months(p.get("tenure"))
-        chips = (f'<span style="font-size:10.5px;font-weight:700;color:#146634;background:#EAF7EE;'
-                 f'border-radius:20px;padding:3px 9px">{esc(p.get("order_frequency"))} ✓</span>'
-                 f'<span style="font-size:10.5px;font-weight:700;color:#146634;background:#EAF7EE;'
-                 f'border-radius:20px;padding:3px 9px">{months}mo ✓</span>') if ok else (
-                 f'<span style="font-size:10.5px;font-weight:600;color:#7A6100;background:#FBF4CE;'
-                 f'border-radius:20px;padding:3px 9px;line-height:1.4">{esc(why.replace("Excluded: ", ""))}</span>')
-        return (f'<div style="display:flex;align-items:center;gap:10px;padding:9px 11px;background:#fff;'
-                f'border:1px solid {"#D8EEDF" if ok else "#EFEFE9"};border-radius:12px;margin-bottom:8px">'
-                f'<div style="width:30px;height:30px;border-radius:9px;flex:none;display:flex;'
-                f'align-items:center;justify-content:center;font-weight:800;font-size:12px;'
-                f'background:{p["avatar_bg"]};color:#16130A">{esc(p["initials"])}</div>'
-                f'<div style="flex:1;min-width:0">'
-                f'<div style="font-size:13px;font-weight:700;color:#16130A">{esc(p["display_name"])}</div>'
-                f'<div style="font-size:11.5px;color:#6B6B60">{esc(p.get("order_frequency"))} · '
-                f'{esc(p.get("tenure"))}</div></div>'
-                f'<div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end;'
-                f'flex:none;max-width:190px;text-align:right">{chips}</div></div>')
+        # Name + cadence/tenure. Clipped rather than wrapped — these are short strings
+        # and an ellipsis reads better than a two-line name in a dense list.
+        ident = (f'<div style="flex:1;min-width:0">'
+                 f'<div style="font-size:13px;font-weight:700;color:#16130A;white-space:nowrap;'
+                 f'overflow:hidden;text-overflow:ellipsis">{esc(p["display_name"])}</div>'
+                 f'<div style="font-size:11.5px;color:#6B6B60;white-space:nowrap;overflow:hidden;'
+                 f'text-overflow:ellipsis">{esc(p.get("order_frequency"))} · '
+                 f'{esc(p.get("tenure"))}</div></div>')
+        avatar = (f'<div style="width:30px;height:30px;border-radius:9px;flex:none;display:flex;'
+                  f'align-items:center;justify-content:center;font-weight:800;font-size:12px;'
+                  f'background:{p["avatar_bg"]};color:#16130A">{esc(p["initials"])}</div>')
+
+        if ok:
+            chips = (f'<div style="display:flex;gap:5px;flex:none">'
+                     f'<span style="font-size:10.5px;font-weight:700;color:#146634;background:#EAF7EE;'
+                     f'border-radius:20px;padding:3px 9px;white-space:nowrap">'
+                     f'{esc(p.get("order_frequency"))} ✓</span>'
+                     f'<span style="font-size:10.5px;font-weight:700;color:#146634;background:#EAF7EE;'
+                     f'border-radius:20px;padding:3px 9px;white-space:nowrap">{months}mo ✓</span></div>')
+            return (f'<div style="display:flex;align-items:center;gap:10px;padding:9px 11px;'
+                    f'background:#fff;border:1px solid #D8EEDF;border-radius:12px;margin-bottom:8px">'
+                    f'{avatar}{ident}{chips}</div>')
+
+        # Held back: reason on its own line, left-aligned, free to use the full card width.
+        reason = esc(why.replace("Excluded: ", ""))
+        return (f'<div style="padding:9px 11px;background:#fff;border:1px solid #EFEFE9;'
+                f'border-radius:12px;margin-bottom:8px">'
+                f'<div style="display:flex;align-items:center;gap:10px">{avatar}{ident}</div>'
+                f'<div style="margin-top:8px;font-size:11px;font-weight:600;color:#7A6100;'
+                f'background:#FBF4CE;border-radius:9px;padding:6px 10px;line-height:1.45">'
+                f'{reason}</div></div>')
 
     inc_html = "".join(row(p, w, True) for p, w in incl) or \
         '<div style="font-size:12.5px;color:#6B6B60">No profile passes this threshold.</div>'
