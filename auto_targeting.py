@@ -58,11 +58,20 @@ def eligible_profiles(profiles=None, min_tenure_months=MIN_TENURE_MONTHS):
 
 
 def to_notification(nudge):
-    """Shape a generated nudge into a push-notification payload."""
+    """Shape a generated nudge into a push-notification payload.
+
+    Prefers the agent's dedicated push copy (agent.py rule 8) over the in-app card's
+    headline/body. Those two fields are written to a card spec — "sentence 1 names the
+    habit, sentence 2 invites them" — which is right on a card and robotic on a lock
+    screen, where it produced a wall of near-identical "You buy X. Try Y now." payloads.
+
+    Falls back to the card copy if push_title/push_body are missing, so an older or
+    malformed generation still renders something rather than an empty notification.
+    """
     return {
         "emoji": nudge.get("emoji", "🛒"),
-        "title": nudge.get("headline", ""),
-        "body": nudge.get("body", ""),
+        "title": (nudge.get("push_title") or nudge.get("headline") or "").strip(),
+        "body": (nudge.get("push_body") or nudge.get("body") or "").strip(),
         "category": nudge.get("suggested_category", ""),
     }
 

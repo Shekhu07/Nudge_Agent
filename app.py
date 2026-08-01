@@ -21,10 +21,10 @@ from concurrent.futures import ThreadPoolExecutor
 import gradio as gr
 from dotenv import load_dotenv
 
-from agent import generate_nudge
-from friction_matching import (adjacency_scores, load_profiles, load_themes,
-                               match_profile_to_theme, primary_suggested_category,
-                               rank_suggestable_categories)
+from agent import PUSH_ANGLES, generate_nudge
+from friction_matching import (SUGGESTABLE_CATEGORIES, adjacency_scores, load_profiles,
+                               load_themes, match_profile_to_theme,
+                               primary_suggested_category, rank_suggestable_categories)
 from auto_targeting import (ELIGIBLE_FREQS, MIN_TENURE_MONTHS, eligibility_detail,
                             eligible_profiles, parse_tenure_months, to_notification)
 from cart_filler import (DELIVERY_FEE, FREE_DELIVERY_THRESHOLD, never_bought_categories,
@@ -718,25 +718,72 @@ def auto_eligibility_html(min_tenure=MIN_TENURE_MONTHS):
 
 
 def _notification_card(p, notif):
-    """One push payload, styled as an iOS-style lock-screen notification."""
+    """One push payload, styled as an iOS-style lock-screen notification.
+
+    The bubble contains ONLY what a real notification contains — app icon, app name,
+    timestamp, title, body. The operator's routing info (who it went to, which category)
+    used to sit inside the bubble in blue, which is the single biggest reason the preview
+    read as a debug view rather than a phone: no real notification carries its own
+    targeting metadata. It now sits outside the bubble as a caption on the lock-screen
+    background, so the operator still gets it without contaminating the simulation.
+    """
     return (
+        '<div style="margin-bottom:11px">'
         '<div class="nb-pop" style="background:rgba(255,255,255,.94);border-radius:17px;'
-        'padding:11px 13px;margin-bottom:9px;box-shadow:0 4px 16px rgba(0,0,0,.16)">'
+        'padding:11px 13px;box-shadow:0 4px 16px rgba(0,0,0,.16)">'
         '<div style="display:flex;align-items:center;gap:7px;margin-bottom:5px">'
         '<div style="width:19px;height:19px;border-radius:5px;background:#F8CD1B;display:flex;'
         f'align-items:center;justify-content:center;font-size:11px">🛒</div>'
-        '<div style="font-size:11px;font-weight:700;color:#44443B">Blinkit</div>'
+        '<div style="font-size:10.5px;font-weight:700;color:#6B6B60;letter-spacing:.02em">Blinkit</div>'
         f'<div style="flex:1"></div><div style="font-size:10.5px;color:#8A8A7C">now</div></div>'
-        f'<div style="font-size:12.5px;font-weight:800;color:#16130A;line-height:1.3">'
+        f'<div style="font-size:12.5px;font-weight:700;color:#16130A;line-height:1.32">'
         f'{esc(notif.get("emoji", "🛒"))} {esc(notif.get("title"))}</div>'
-        f'<div style="font-size:11.5px;color:#44443B;line-height:1.45;margin-top:3px">'
+        f'<div style="font-size:11.5px;color:#3C3C34;line-height:1.42;margin-top:2px">'
         f'{esc(notif.get("body"))}</div>'
-        f'<div style="margin-top:6px;font-size:10px;font-weight:700;color:#2551C6">'
-        f'To {esc(p["display_name"])} · new category · {esc(notif.get("category"))}</div>'
+        '</div>'
+        f'<div style="font-size:9.5px;font-weight:600;color:rgba(255,255,255,.5);'
+        f'padding:5px 6px 0;letter-spacing:.02em">'
+        f'→ {esc(p["display_name"])} · {esc(notif.get("category"))}</div>'
         '</div>')
 
 
-def _lock_screen(inner, queued, total):
+def _coverage_strip(used):
+    """All suggestable categories, with the ones this run actually nudged marked.
+
+    Five eligible profiles cannot cover eleven categories in a single batch, and
+    inventing extra recipients to force full coverage would fabricate demo data. So the
+    full pool is shown instead, with this run's picks lit — honest about the gap while
+    still surfacing every category the agent can choose from.
+    """
+    if not used:
+        return ""
+    used_n = {str(c).lower().strip() for c in used}
+    chips = "".join(
+        f'<span style="font-size:10px;font-weight:{"800" if c.lower() in used_n else "600"};'
+        f'padding:4px 9px;border-radius:20px;white-space:nowrap;'
+        f'background:{"#F8CD1B" if c.lower() in used_n else "#F2F3EE"};'
+        f'color:{"#16130A" if c.lower() in used_n else "#8A8A7C"};'
+        f'border:1px solid {"#E7B400" if c.lower() in used_n else "#E7E8E2"}">'
+        f'{"● " if c.lower() in used_n else ""}{esc(c)}</span>'
+        for c in SUGGESTABLE_CATEGORIES)
+    return f"""
+<div style="max-width:340px;margin:14px auto 0;padding-top:13px;border-top:1px solid #E7E8E2">
+  <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px">
+    <div class="nb-eyebrow" style="font-size:10.5px">Category coverage</div>
+    <div style="font-size:10.5px;font-weight:700;color:#6B6B60">
+      {len(used_n)} of {len(SUGGESTABLE_CATEGORIES)} this run</div>
+  </div>
+  <div style="display:flex;flex-wrap:wrap;gap:5px">{chips}</div>
+  <div style="font-size:10.5px;color:#6B6B60;line-height:1.5;margin-top:9px">
+    Each queued user gets a <b>different</b> never-bought category, so one batch spans
+    {len(used_n)} distinct shelves rather than repeating the same one. The unlit chips are
+    reachable for other users — a batch of {len(used_n)} cannot cover all
+    {len(SUGGESTABLE_CATEGORIES)} without inventing recipients.</div>
+</div>"""
+
+
+def _lock_screen(inner, queued, total, used_categories=None):
+    coverage = _coverage_strip(used_categories or [])
     return f"""
 <div class="nb-eyebrow" style="text-align:center;margin-bottom:12px">Push payload preview</div>
 <div style="width:320px;margin:0 auto;background:#0E0E0C;border-radius:42px;padding:11px;
@@ -755,7 +802,41 @@ def _lock_screen(inner, queued, total):
   </div>
 </div>
 <div style="text-align:center;font-size:11.5px;font-weight:600;color:#6B6B60;margin-top:12px">
-  {queued} of {total} profiles nudged · each payload is shaped from that user's generated nudge</div>"""
+  {queued} of {total} profiles nudged · each payload is shaped from that user's generated nudge</div>
+{coverage}"""
+
+
+def _assign_distinct_categories(queue):
+    """Give every queued user a DIFFERENT genuinely-adjacent category.
+
+    Without this, several users in one batch land on the same category — the synthetic
+    profiles have overlapping baskets, so "packaged gourmet foods" would win twice in a
+    five-user run and the preview looked repetitive.
+
+    Relevance still outranks variety: a user is only moved off a category if they have
+    another candidate with a real adjacency score (> 0). The scarcest user goes first
+    (fewest qualifying options), so a user with one viable category isn't left stranded
+    by someone who had three to choose from. If a user genuinely has no untaken candidate,
+    they keep their best one and the repeat is allowed rather than forcing an irrelevant
+    suggestion — variety is never worth a nudge that doesn't fit.
+
+    Deterministic: same queue in, same assignment out.
+    """
+    options = {}
+    for p in queue:
+        scores = adjacency_scores(p)
+        pool = rank_suggestable_categories(p, top_n=len(SUGGESTABLE_CATEGORIES))
+        options[p["user_id"]] = [c for c in pool if scores.get(c, 0) > 0] or pool
+
+    assigned, taken = {}, set()
+    for uid in sorted(options, key=lambda u: (len(options[u]), u)):
+        pick = next((c for c in options[uid] if c not in taken), None)
+        if pick is None:                      # every candidate already used
+            pick = options[uid][0] if options[uid] else None
+        if pick:
+            assigned[uid] = pick
+            taken.add(pick)
+    return assigned
 
 
 def on_run_auto_batch(min_tenure=MIN_TENURE_MONTHS):
@@ -770,11 +851,21 @@ def on_run_auto_batch(min_tenure=MIN_TENURE_MONTHS):
             'font-size:12px;color:rgba(255,255,255,.8);text-align:center;line-height:1.5">'
             'No profile passes the gate at this tenure threshold — nothing would be sent.</div>',
             0, total)
+
+    assigned = _assign_distinct_categories(queue)
+    # Spread push_title hook angles round-robin across the batch. Each nudge is an
+    # independent Groq call that cannot see the others, so without this they converge on
+    # one phrasing; hashing per user collides at this batch size, so assign by position.
+    angles = {p["user_id"]: PUSH_ANGLES[i % len(PUSH_ANGLES)] for i, p in enumerate(queue)}
+
     def _gen(p):
         theme, reason = match_profile_to_theme(p, THEMES)
-        return generate_nudge(p, theme, reason)  # REAL Groq call
+        # REAL Groq call, pinned to this user's pre-assigned category so the batch spans
+        # distinct shelves instead of several users landing on the same one.
+        return generate_nudge(p, theme, reason, forced_category=assigned.get(p["user_id"]),
+                              push_angle=angles.get(p["user_id"]))
 
-    cards = ""
+    cards, used = "", []
     with ThreadPoolExecutor(max_workers=min(8, len(queue))) as pool:
         futures = {pool.submit(_gen, p): p for p in queue}
         results = {}
@@ -792,7 +883,9 @@ def on_run_auto_batch(min_tenure=MIN_TENURE_MONTHS):
                       f'{esc(p["display_name"])}: {esc(payload)}</div>')
         else:
             cards += _notification_card(p, payload)
-    return _lock_screen(cards, len(queue), total)
+            if payload.get("category"):
+                used.append(payload["category"])
+    return _lock_screen(cards, len(queue), total, used_categories=used)
 
 
 # ----------------------- Feature 2: checkout cart-filler -----------------------
