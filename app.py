@@ -27,8 +27,14 @@ from friction_matching import (SUGGESTABLE_CATEGORIES, adjacency_scores, load_pr
                                primary_suggested_category, rank_suggestable_categories)
 from auto_targeting import (ELIGIBLE_FREQS, MIN_TENURE_MONTHS, eligibility_detail,
                             eligible_profiles, parse_tenure_months, to_notification)
-from cart_filler import (DELIVERY_FEE, FREE_DELIVERY_THRESHOLD, never_bought_categories,
-                         suggest_fillers)
+from cart_filler import (DELIVERY_FEE, FREE_DELIVERY_THRESHOLD, cart_lines,
+                         never_bought_categories, suggest_fillers)
+
+# Per-category glyph for the checkout line items, so a cart isn't three identical 🛒 tiles.
+STAPLE_EMOJI = {
+    "Groceries": "🌾", "Fresh Produce": "🍅", "Dairy": "🥛", "Snacks": "🍪",
+    "Beverages": "🥤", "Household": "🧴", "Personal Care": "🧼",
+}
 
 load_dotenv()
 
@@ -900,13 +906,36 @@ def cart_phone_html(uid, cart_total):
     pct = min(100, round(cart_total / thr * 100)) if thr else 100
     qualifies = res["qualifies"]
 
+    # Real line items that add up to the operator's chosen cart total. Previously these
+    # were three unpriced "<Category> / usual item" placeholders sitting above an Item
+    # total that nothing on screen explained.
+    basket = cart_lines(p, cart_total)
     lines = "".join(f"""
       <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid #F2F2EC">
         <div style="width:34px;height:34px;border-radius:9px;background:#F7F8F5;display:flex;
-          align-items:center;justify-content:center;font-size:16px;flex:none">🛒</div>
-        <div style="flex:1;min-width:0"><div style="font-size:12.5px;font-weight:700;color:#16130A">{esc(c)}</div>
-        <div style="font-size:11px;color:#6B6B60">usual item</div></div>
-      </div>""" for c in p["buys_display"][:3])
+          align-items:center;justify-content:center;font-size:16px;flex:none">{STAPLE_EMOJI.get(it['category'], '🛒')}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:12.5px;font-weight:700;color:#16130A;white-space:nowrap;
+            overflow:hidden;text-overflow:ellipsis">{esc(it['name'])}</div>
+          <div style="font-size:11px;color:#6B6B60">{esc(it['category'])} · ₹{it['price']}
+            {f"× {it['qty']}" if it['qty'] > 1 else ""}</div>
+        </div>
+        <div style="font-size:12.5px;font-weight:700;color:#16130A;flex:none">₹{it['subtotal']}</div>
+      </div>""" for it in basket["lines"])
+    if basket["remainder"] > 0:
+        lines += (
+            '<div style="display:flex;align-items:center;gap:10px;padding:9px 0;'
+            'border-bottom:1px solid #F2F2EC">'
+            '<div style="width:34px;height:34px;border-radius:9px;background:#F7F8F5;display:flex;'
+            'align-items:center;justify-content:center;font-size:14px;flex:none;color:#8A8A7C">＋</div>'
+            '<div style="flex:1;min-width:0">'
+            '<div style="font-size:12.5px;font-weight:600;color:#6B6B60">Other items in this cart</div>'
+            '<div style="font-size:11px;color:#8A8A7C">not itemised in this demo</div></div>'
+            f'<div style="font-size:12.5px;font-weight:700;color:#6B6B60;flex:none">'
+            f'₹{basket["remainder"]}</div></div>')
+    if not basket["lines"] and basket["remainder"] <= 0:
+        lines = ('<div style="padding:18px 0;text-align:center;font-size:12px;color:#6B6B60">'
+                 'Cart is empty — drag the slider to add items.</div>')
 
     if qualifies:
         band = ('#EAF7EE', '#C4E7CF', '#146634', '✓',

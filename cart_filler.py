@@ -20,6 +20,66 @@ FREE_DELIVERY_THRESHOLD = 199
 # constant, not a measured or claimed Blinkit fee.
 DELIVERY_FEE = 35
 
+# SYNTHETIC staple items for the categories a user ALREADY buys — used to render the
+# checkout cart as real line items instead of the placeholder "Groceries / usual item"
+# rows the screen used to show.
+#
+# Why adding this is consistent rather than a new liberty: the cart deliberately avoided
+# naming products on the grounds that it would invent data — but FILLER_CATALOG below
+# already invents names and prices for 11 categories and labels them illustrative. The
+# honesty posture was already set; the cart lines just weren't using it. Same rule here:
+# demo items, labelled as such in the UI, never presented as real Blinkit catalogue.
+#
+# Keyed on the profile's `buys_display` values (title-cased), not the normalised
+# `top_categories` slugs.
+STAPLES_CATALOG = {
+    "Groceries":     [{"name": "Whole Wheat Atta (5kg)", "price": 62}],
+    "Fresh Produce": [{"name": "Tomatoes (500g)", "price": 24}],
+    "Dairy":         [{"name": "Toned Milk (500ml)", "price": 33}],
+    "Snacks":        [{"name": "Salted Chips (Large)", "price": 30}],
+    "Beverages":     [{"name": "Cola (750ml)", "price": 40}],
+    "Household":     [{"name": "Dishwash Liquid (500ml)", "price": 58}],
+    "Personal Care": [{"name": "Shower Gel (250ml)", "price": 68}],
+}
+
+
+def cart_lines(profile, cart_total, max_lines=3):
+    """Build checkout line items that reconcile exactly to a given cart total.
+
+    The cart total is operator-controlled (a slider), so the line items cannot be a fixed
+    list — they have to add up to whatever total is set, or the bill shows an "Item total"
+    that none of the visible rows explain. That mismatch was visible on the old screen:
+    three unpriced rows sitting above a ₹150 subtotal that came from nowhere.
+
+    Fills from the user's own habitual categories in order, in whole units, and returns
+    any unallocated balance as `remainder` so the caller can render a final "other items"
+    row. Guarantees: sum(line subtotals) + remainder == cart_total, and remainder >= 0.
+
+    Deterministic — no LLM, no randomness.
+    """
+    cart_total = max(0, int(cart_total))
+    lines, spent = [], 0
+    cats = [c for c in (profile.get("buys_display") or [])[:max_lines]
+            if c in STAPLES_CATALOG]
+    for i, cat in enumerate(cats):
+        item = STAPLES_CATALOG[cat][0]
+        left = cart_total - spent
+        if left < item["price"]:
+            continue
+        # Reserve rough room for the categories still to come so one staple can't eat
+        # the whole cart and leave the rest of the basket invisible.
+        share = left if i == len(cats) - 1 else left // (len(cats) - i)
+        qty = max(1, min(3, share // item["price"]))
+        if item["price"] * qty > left:
+            qty = left // item["price"]
+        if qty < 1:
+            continue
+        lines.append({**item, "category": cat, "qty": qty,
+                      "subtotal": item["price"] * qty})
+        spent += item["price"] * qty
+    return {"lines": lines, "remainder": cart_total - spent, "cart_total": cart_total}
+
+
 # SYNTHETIC low-cost filler items per suggestable category. Prices are illustrative.
 FILLER_CATALOG = {
     "home & cleaning":        [{"name": "Stainless Steel Cleaner", "price": 65},
