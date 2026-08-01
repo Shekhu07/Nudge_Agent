@@ -104,16 +104,26 @@ footer,.footer,.show-api,.built-with,.settings{display:none !important}
 .nb-dot{width:7px;height:7px;border-radius:50%;display:inline-block}
 
 /* cards */
-.nb-card{background:#fff !important;border:1px solid #E7E8E2 !important;border-radius:20px !important;
-  padding:20px 22px !important;box-shadow:0 1px 2px rgba(0,0,0,.03) !important;margin-bottom:18px !important}
+.nb-card{background:#fff !important;border:1px solid #E7E8E2 !important;border-radius:16px !important;
+  padding:15px 17px !important;box-shadow:0 1px 2px rgba(0,0,0,.03) !important;margin-bottom:12px !important}
 .nb-eyebrow.nb-eyebrow.nb-eyebrow{font-size:12px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:#6B6B60}
-.nb-tile{flex:1;background:#F7F8F5;border-radius:12px;padding:11px 13px}
+.nb-tile{flex:1;background:#F7F8F5;border-radius:12px;padding:9px 11px}
+
+/* collapsible secondary panels (methodology-heavy content, hidden until asked for) */
+details.nb-card{cursor:default}
+details.nb-card>summary{cursor:pointer;list-style:none;display:flex;align-items:center;
+  gap:8px;font-size:12px;font-weight:800;letter-spacing:.04em;color:#16130A}
+details.nb-card>summary::-webkit-details-marker{display:none}
+details.nb-card>summary .nb-chev{font-size:10px;color:#9A9A8C;transition:transform .15s;flex:none}
+details.nb-card[open]>summary .nb-chev{transform:rotate(90deg)}
+details.nb-card[open]>summary{margin-bottom:13px;padding-bottom:12px;border-bottom:1px solid #F0F1EC}
+details.nb-card>summary .nb-sub{font-weight:500;color:#8E8F86;text-transform:none;letter-spacing:0}
 .nb-tile-k.nb-tile-k.nb-tile-k{font-size:11px;font-weight:700;color:#6B6B60;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px}
 .nb-tile-v.nb-tile-v.nb-tile-v{font-size:14px;font-weight:700;color:#16130A}
 
 /* user chips (Gradio buttons dressed as the design's chips) */
-.nb-chip{display:flex !important;align-items:center !important;gap:11px !important;
-  padding:11px 13px !important;border-radius:14px !important;text-align:left !important;
+.nb-chip{display:flex !important;align-items:center !important;gap:9px !important;
+  padding:9px 11px !important;border-radius:13px !important;text-align:left !important;
   font-size:14px !important;font-weight:700 !important;color:#16130A !important;
   background:#F7F8F5 !important;border:1.5px solid #EDEEE8 !important;box-shadow:none !important;
   width:100% !important;justify-content:flex-start !important;height:auto !important;
@@ -163,15 +173,15 @@ footer,.footer,.show-api,.built-with,.settings{display:none !important}
   margin-top:16px !important}
 
 /* dark reasoning card */
-.nb-dark.nb-dark.nb-dark{background:#16130A;border-radius:20px;padding:22px;color:#F4F5F3}
+.nb-dark.nb-dark.nb-dark{background:#16130A;border-radius:16px;padding:17px;color:#F4F5F3}
 .nb-dark.nb-dark.nb-dark *{color:#CFD0C6}
 .nb-dark.nb-dark.nb-dark .k{color:#F8CD1B;font-size:12px;font-weight:800;letter-spacing:.09em;text-transform:uppercase}
 .nb-dark.nb-dark.nb-dark .h{color:#fff;font-size:13px;font-weight:800;margin-bottom:3px}
-.nb-ic{width:30px;height:30px;border-radius:9px;background:rgba(248,205,27,.16);display:flex;
-  align-items:center;justify-content:center;font-size:15px;flex:none}
+.nb-ic{width:26px;height:26px;border-radius:8px;background:rgba(248,205,27,.16);display:flex;
+  align-items:center;justify-content:center;font-size:13px;flex:none}
 
 /* phone */
-.nb-phonewrap{position:sticky;top:16px;display:flex;flex-direction:column;align-items:center;gap:14px}
+.nb-phonewrap{position:sticky;top:12px;display:flex;flex-direction:column;align-items:center;gap:10px}
 .nb-phone{width:340px;background:#0E0E0C;border-radius:44px;padding:12px;
   box-shadow:0 24px 60px rgba(0,0,0,.22)}
 .nb-screen{background:#fff;border-radius:33px;overflow:hidden}
@@ -272,12 +282,12 @@ def alternatives_html(p, r=None):
             "not a confidence score. Order is the candidate list handed to the agent "
             "(equally-adjacent candidates are rotated per user for variety).")
     return f"""
-    <div style="display:flex;gap:13px">
+    <div style="display:flex;gap:11px">
       <div class="nb-ic">⚖️</div>
       <div style="flex:1;min-width:0">
-        <div class="h" style="margin-bottom:9px">Also considered — ranked</div>
-        <div style="display:flex;flex-direction:column;gap:7px">{rows}</div>
-        <div style="font-size:11px;line-height:1.5;color:#8E8F86;margin-top:9px">{foot}</div>
+        <div class="h" style="margin-bottom:7px">Also considered — ranked</div>
+        <div style="display:flex;flex-direction:column;gap:6px">{rows}</div>
+        <div style="font-size:10.5px;line-height:1.45;color:#8E8F86;margin-top:7px">{foot}</div>
       </div>
     </div>"""
 
@@ -332,11 +342,11 @@ def reasoning_html(theme, r=None, p=None):
         drivers.append(("Peer social proof", r.get("social_proof_line", "")))
     d_html = "".join(f"""
       <div style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);
-        border-radius:12px;padding:11px 13px;display:flex;gap:11px;align-items:flex-start">
-        <div style="width:22px;height:22px;border-radius:7px;background:#F8CD1B;color:#16130A;
-          font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;flex:none">{i}</div>
-        <div><div style="font-size:13px;font-weight:700;color:#fff">{esc(n)}</div>
-        <div style="font-size:12px;line-height:1.5;color:#B7B8AE;margin-top:2px">{esc(v)}</div></div>
+        border-radius:11px;padding:9px 11px;display:flex;gap:9px;align-items:flex-start">
+        <div style="width:20px;height:20px;border-radius:6px;background:#F8CD1B;color:#16130A;
+          font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex:none">{i}</div>
+        <div><div style="font-size:12.5px;font-weight:700;color:#fff">{esc(n)}</div>
+        <div style="font-size:11.5px;line-height:1.45;color:#B7B8AE;margin-top:1px">{esc(v)}</div></div>
       </div>""" for i, (n, v) in enumerate(drivers, 1))
 
     scope = "" if r.get("_in_primary_scope") else (
@@ -352,19 +362,19 @@ def reasoning_html(theme, r=None, p=None):
     <div class="k">Why this nudge</div>
     <div style="flex:1;height:1px;background:rgba(255,255,255,.12)"></div>{meter}</div>
   {bar}
-  <div style="display:flex;flex-direction:column;gap:16px">
+  <div style="display:flex;flex-direction:column;gap:12px">
     {scope}
-    <div style="display:flex;gap:13px"><div class="nb-ic">👤</div>
+    <div style="display:flex;gap:11px"><div class="nb-ic">👤</div>
       <div><div class="h">Why this user</div>
-      <div style="font-size:13px;line-height:1.55;color:#CFD0C6">{esc(r.get('why_user'))}</div></div></div>
-    <div style="display:flex;gap:13px"><div class="nb-ic">🧭</div>
+      <div style="font-size:12.5px;line-height:1.5;color:#CFD0C6">{esc(r.get('why_user'))}</div></div></div>
+    <div style="display:flex;gap:11px"><div class="nb-ic">🧭</div>
       <div><div class="h">Why this category</div>
-      <div style="font-size:13px;line-height:1.55;color:#CFD0C6">{esc(r.get('why_category'))}</div></div></div>
+      <div style="font-size:12.5px;line-height:1.5;color:#CFD0C6">{esc(r.get('why_category'))}</div></div></div>
     {alts}
     <div>
-      <div style="display:flex;gap:13px;margin-bottom:10px"><div class="nb-ic">🛡️</div>
+      <div style="display:flex;gap:11px;margin-bottom:8px"><div class="nb-ic">🛡️</div>
         <div class="h" style="padding-top:6px">Trust drivers, ranked (research-led)</div></div>
-      <div style="display:flex;flex-direction:column;gap:8px">{d_html}</div>
+      <div style="display:flex;flex-direction:column;gap:6px">{d_html}</div>
     </div>
     <div style="font-size:11px;color:#8E8F86;font-family:monospace">model · {esc(r.get('_model'))}</div>
   </div>
@@ -394,15 +404,7 @@ def measurement_plan_html(r=None):
         <div style="font-size:12px;color:{'#7A6836' if tone else '#6B6B60'};line-height:1.45">{note}</div>
       </div>"""
 
-    return f"""
-<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;
-  flex-wrap:wrap;gap:10px">
-  <div><div class="nb-eyebrow">Measurement plan</div>
-    <div style="font-size:16px;font-weight:800;margin-top:3px;color:#16130A">How we would prove the
-      nudge works</div></div>
-  <div class="nb-pill" style="background:#F3F4F0;border:1px solid #DEDFD7;color:#5A5A50">
-    <span class="nb-dot" style="background:#9A9A8C"></span>Proposed · not yet run</div>
-</div>
+    body = f"""
 <div style="font-size:12.5px;line-height:1.55;color:#63635A;margin-bottom:14px">
   Design only. The MVP has not been shipped to real users, so there are
   <b style="color:#16130A">no conversion, lift or significance figures</b> — any number here
@@ -428,6 +430,11 @@ def measurement_plan_html(r=None):
   Scope caveat carried from the problem statement: this can only move the trust-driven share of
   category stagnation, not the low-intent share — so the read-out would be split by whether the
   user had a quality incident.</div>"""
+    return f"""<details class="nb-card">
+  <summary><span class="nb-chev">▸</span>📊 Measurement plan — how we would prove the nudge works
+    <span class="nb-sub">design only, not yet run</span></summary>
+  {body}
+</details>"""
 
 
 def instrumentation_html():
@@ -453,17 +460,17 @@ def instrumentation_html():
           <div style="font-size:12.5px;font-weight:700;color:#16130A;font-family:monospace">{esc(k)}</div>
           <div style="font-size:11.5px;color:#6B6B60;line-height:1.45">{esc(v)}</div></div>
       </div>""" for i, (k, v) in enumerate(stages, 1))
-    return f"""
-<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-  <div class="nb-eyebrow">Instrumentation</div>
-  <div style="font-size:11px;font-weight:700;color:#5A5A50;background:#F3F4F0;border:1px solid #DEDFD7;
-    padding:3px 9px;border-radius:99px">no live data</div>
-</div>
+    body = f"""
 <div style="display:flex;flex-direction:column;gap:10px">{rows}</div>
 <div style="margin-top:13px;padding-top:12px;border-top:1px solid #F0F1EC;font-size:11.5px;
   font-weight:600;color:#6B6B60;line-height:1.55">
   The four events the MVP would emit, in order. Deliberately shown without percentages — the
   nudge has not run against real users, so a funnel here would be fabricated.</div>"""
+    return f"""<details class="nb-card">
+  <summary><span class="nb-chev">▸</span>📶 Instrumentation — event spec
+    <span class="nb-sub">no live data</span></summary>
+  {body}
+</details>"""
 
 
 def _phone_shell(p, inner, hint=None):
@@ -1136,12 +1143,10 @@ with gr.Blocks(title="Blinkit Category Nudge Agent", css=CSS, head=FONT_LINK,
                         prof_out = gr.HTML(profile_html(_p0, _t0, _r0))
                         gen = gr.Button("⚡ Generate nudge", elem_id="gen")
                     reason_out = gr.HTML(reasoning_html(_t0, p=_p0))
-                    with gr.Column(elem_classes="nb-card"):
-                        measure_out = gr.HTML(measurement_plan_html())
+                    measure_out = gr.HTML(measurement_plan_html())
                 with gr.Column(scale=85):
                     phone_out = gr.HTML(phone_html(_p0))
-                    with gr.Column(elem_classes="nb-card", elem_id="instr"):
-                        gr.HTML(instrumentation_html())
+                    gr.HTML(instrumentation_html())
 
         with gr.Tab("Auto-nudge queue"):
             with gr.Row(elem_classes="nb-cols"):
