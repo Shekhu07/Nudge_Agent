@@ -643,19 +643,17 @@ def auto_gate_head(min_tenure=MIN_TENURE_MONTHS):
 </div>"""
 
 
-def auto_eligibility_html(min_tenure=MIN_TENURE_MONTHS):
-    """Funnel + the in-queue / held-back split.
+def auto_funnel_html(min_tenure=MIN_TENURE_MONTHS):
+    """The compact 3-stage funnel only (all profiles -> cadence passes -> in queue).
 
-    Every count is computed live from the 8 synthetic profiles through the real
-    deterministic gate (auto_targeting.eligibility_detail), so moving the tenure slider
-    re-runs the actual rule rather than animating a fixed number.
+    Split out of the old auto_eligibility_html() so this stays visible at a glance while
+    the much longer per-profile breakdown (below) can be tucked into a collapsed
+    accordion — the full always-open list of all 8 profiles was the main source of
+    clutter in this tab. Every count is still computed live through the real
+    deterministic gate (auto_targeting.eligibility_detail).
     """
     min_tenure = int(min_tenure)
-    incl, excl = [], []
-    for p in PROFILES:
-        ok, why = eligibility_detail(p, min_tenure)
-        (incl if ok else excl).append((p, why))
-
+    incl = [p for p in PROFILES if eligibility_detail(p, min_tenure)[0]]
     freq_ok = [p for p in PROFILES if (p.get("order_frequency") or "").strip().lower()
                in ELIGIBLE_FREQS]
     stages = [(len(PROFILES), "All profiles", "synthetic user base"),
@@ -675,6 +673,17 @@ def auto_eligibility_html(min_tenure=MIN_TENURE_MONTHS):
           <div style="height:100%;width:{round(100 * n / total)}%;border-radius:99px;
             background:{YELLOW};animation:barGrow .7s cubic-bezier(.2,.7,.3,1)"></div></div>
       </div>""" for i, (n, lab, sub) in enumerate(stages))
+    return f'<div style="display:flex;gap:12px;flex-wrap:wrap">{funnel}</div>'
+
+
+def auto_profile_list_html(min_tenure=MIN_TENURE_MONTHS):
+    """The full in-queue / held-back per-profile breakdown, meant to sit inside a
+    collapsed accordion (see the tab layout) rather than always on screen."""
+    min_tenure = int(min_tenure)
+    incl, excl = [], []
+    for p in PROFILES:
+        ok, why = eligibility_detail(p, min_tenure)
+        (incl if ok else excl).append((p, why))
 
     def row(p, why, ok):
         """One profile row in the eligibility split.
@@ -726,8 +735,7 @@ def auto_eligibility_html(min_tenure=MIN_TENURE_MONTHS):
         '<div style="font-size:12.5px;color:#6B6B60">Nobody held back at this threshold.</div>'
 
     return f"""
-<div style="display:flex;gap:12px;flex-wrap:wrap">{funnel}</div>
-<div style="display:flex;gap:14px;margin-top:18px;flex-wrap:wrap">
+<div style="display:flex;gap:14px;flex-wrap:wrap">
   <div style="flex:1;min-width:250px">
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
       <span style="width:8px;height:8px;border-radius:50%;background:#1F9D55"></span>
@@ -749,18 +757,32 @@ def auto_eligibility_html(min_tenure=MIN_TENURE_MONTHS):
 </div>"""
 
 
-def _notification_card(p, notif):
+def _notification_card(p, notif, nudge=None):
     """One push payload, styled as an iOS-style lock-screen notification.
 
     The bubble contains ONLY what a real notification contains — app icon, app name,
-    timestamp, title, body. The operator's routing info (who it went to, which category)
-    used to sit inside the bubble in blue, which is the single biggest reason the preview
-    read as a debug view rather than a phone: no real notification carries its own
-    targeting metadata. It now sits outside the bubble as a caption on the lock-screen
-    background, so the operator still gets it without contaminating the simulation.
+    timestamp, title, body. The operator's routing info (who it went to, which category,
+    the trust driver behind the pick) sits OUTSIDE the bubble as captions on the
+    lock-screen background — no real notification carries its own targeting metadata, so
+    keeping it out of the bubble avoids the preview reading as a debug view instead of a
+    phone. `nudge` (the full generate_nudge() result, optional) supplies refund_line for
+    the trust-driver caption; falls back to just the category badge if not given.
     """
+    cat_label = str(notif.get("category") or "").title()
+    badge = (
+        f'<div style="margin-top:8px"><span style="font-size:10px;font-weight:800;'
+        f'color:#16130A;background:{YELLOW};border-radius:20px;padding:4px 10px;'
+        f'white-space:nowrap">🆕 New pick · {esc(cat_label)}</span></div>'
+        if cat_label else ''
+    )
+    refund_line = (nudge or {}).get("refund_line") or ""
+    trust = (
+        f'<div style="margin-top:5px;font-size:10.5px;color:rgba(255,255,255,.62);'
+        f'line-height:1.4">💯 {esc(refund_line)}</div>'
+        if refund_line else ''
+    )
     return (
-        '<div style="margin-bottom:11px">'
+        '<div style="margin-bottom:14px">'
         '<div class="nb-pop" style="background:rgba(255,255,255,.94);border-radius:17px;'
         'padding:11px 13px;box-shadow:0 4px 16px rgba(0,0,0,.16)">'
         '<div style="display:flex;align-items:center;gap:7px;margin-bottom:5px">'
@@ -773,9 +795,9 @@ def _notification_card(p, notif):
         f'<div style="font-size:11.5px;color:#3C3C34;line-height:1.42;margin-top:2px">'
         f'{esc(notif.get("body"))}</div>'
         '</div>'
-        f'<div style="font-size:9.5px;font-weight:600;color:rgba(255,255,255,.5);'
-        f'padding:5px 6px 0;letter-spacing:.02em">'
-        f'→ {esc(p["display_name"])} · {esc(notif.get("category"))}</div>'
+        f'{badge}{trust}'
+        f'<div style="font-size:9.5px;font-weight:600;color:rgba(255,255,255,.45);'
+        f'padding:4px 6px 0;letter-spacing:.02em">For {esc(p["display_name"])}</div>'
         '</div>')
 
 
@@ -928,7 +950,7 @@ def on_run_auto_batch(min_tenure=MIN_TENURE_MONTHS, uid=None):
         for fut in futures:
             p = futures[fut]
             try:
-                results[p["user_id"]] = ("ok", to_notification(fut.result()))
+                results[p["user_id"]] = ("ok", fut.result())
             except Exception as e:  # noqa: BLE001
                 results[p["user_id"]] = ("error", e)
     for p in queue:
@@ -938,9 +960,10 @@ def on_run_auto_batch(min_tenure=MIN_TENURE_MONTHS, uid=None):
                       f'font-size:11.5px;color:#B00;margin-bottom:9px">Failed for '
                       f'{esc(p["display_name"])}: {esc(payload)}</div>')
         else:
-            cards += _notification_card(p, payload)
-            if payload.get("category"):
-                used.append(payload["category"])
+            notif = to_notification(payload)
+            cards += _notification_card(p, notif, nudge=payload)
+            if notif.get("category"):
+                used.append(notif["category"])
     footer = (f"Previewing the push {esc(queue[0]['display_name'])} would receive · "
               f"not part of a batch send") if uid else None
     return _lock_screen(cards, len(queue), total, used_categories=used, footer=footer)
@@ -1366,6 +1389,15 @@ with gr.Blocks(title="Blinkit Category Nudge Agent", css=CSS, head=FONT_LINK,
                     gr.HTML(instrumentation_html())
 
         with gr.Tab("Auto-nudge queue"):
+            with gr.Column(elem_classes="nb-card"):
+                gr.HTML('<div class="nb-eyebrow">Blink & Try It · auto-nudge</div>'
+                        '<div style="font-size:15px;font-weight:800;color:#16130A;'
+                        'margin-top:4px">Pick a user, then preview the push they would receive</div>')
+                with gr.Row():
+                    auto_user = gr.Dropdown(
+                        choices=[(p["display_name"], p["user_id"]) for p in PROFILES],
+                        value=PROFILES[0]["user_id"], label="Synthetic user", scale=70)
+                    run_batch = gr.Button("▶ Run scheduled batch", elem_id="genbatch", scale=30)
             with gr.Row(elem_classes="nb-cols"):
                 with gr.Column(scale=110):
                     with gr.Column(elem_classes="nb-card"):
@@ -1373,11 +1405,9 @@ with gr.Blocks(title="Blinkit Category Nudge Agent", css=CSS, head=FONT_LINK,
                         with gr.Column(elem_id="tenwrap"):
                             tenure = gr.Slider(3, 12, value=MIN_TENURE_MONTHS, step=1,
                                                label="Minimum tenure threshold (months)")
-                        gate_out = gr.HTML(auto_eligibility_html())
-                        auto_user = gr.Dropdown(
-                            choices=[(p["display_name"], p["user_id"]) for p in PROFILES],
-                            value=PROFILES[0]["user_id"], label="Preview push for user")
-                        run_batch = gr.Button("▶ Run scheduled batch", elem_id="genbatch")
+                        funnel_out = gr.HTML(auto_funnel_html())
+                        with gr.Accordion("See all 8 profiles — who's in queue and why", open=False):
+                            gate_out = gr.HTML(auto_profile_list_html())
                 with gr.Column(scale=90):
                     with gr.Column(elem_classes="nb-card"):
                         auto_out = gr.HTML(_lock_screen(
@@ -1415,7 +1445,8 @@ with gr.Blocks(title="Blinkit Category Nudge Agent", css=CSS, head=FONT_LINK,
                   outputs=[sel, prof_out, reason_out, phone_out, measure_out] + chip_btns)
     gen.click(on_generate, inputs=sel, outputs=[reason_out, phone_out, measure_out])
     tenure.change(auto_gate_head, inputs=tenure, outputs=head_out)
-    tenure.change(auto_eligibility_html, inputs=tenure, outputs=gate_out)
+    tenure.change(auto_funnel_html, inputs=tenure, outputs=funnel_out)
+    tenure.change(auto_profile_list_html, inputs=tenure, outputs=gate_out)
     run_batch.click(on_run_auto_batch, inputs=[tenure, auto_user], outputs=auto_out)
     for _c in (cart_user, cart_amt):
         _c.change(cart_phone_html, inputs=[cart_user, cart_amt], outputs=cart_phone)
