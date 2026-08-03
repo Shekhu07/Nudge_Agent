@@ -17,6 +17,7 @@ import html
 import os
 import random
 from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
 
 import gradio as gr
 from dotenv import load_dotenv
@@ -59,6 +60,23 @@ THEMES = load_themes()
 PROFILES = load_profiles()
 BY_ID = {p["user_id"]: p for p in PROFILES}
 
+# Raw SVG markup for each profile's illustrated avatar (avatars/{user_id}.svg), inlined
+# directly into HTML strings rather than referenced by <img src="avatars/...">. gr.HTML
+# content is rendered client-side and a relative file path isn't guaranteed to resolve to
+# the server's working directory the way Gradio's own icon= parameter does (which the chip
+# buttons use instead) — inlining the markup removes that guesswork entirely.
+#
+# The fetched SVGs have no width/height on the root <svg> (just a viewBox), so as a
+# replaced element they'd default to the browser's fallback size (300x150) instead of
+# filling whatever box they're placed in. Injecting width/height:100% on load means every
+# call site can just size its wrapper div and the avatar always fills it.
+AVATAR_SVG = {}
+for _p in PROFILES:
+    with open(Path(__file__).parent / "avatars" / f"{_p['user_id']}.svg", encoding="utf-8") as _f:
+        _svg = _f.read()
+    AVATAR_SVG[_p["user_id"]] = _svg.replace(
+        "<svg ", '<svg style="width:100%;height:100%;display:block" ', 1)
+
 INK, YELLOW, BG = "#16130A", "#F8CD1B", "#F4F5F3"
 
 FONT_LINK = """
@@ -73,12 +91,12 @@ if(u.searchParams.get('__theme')!=='light'){u.searchParams.set('__theme','light'
 window.location.replace(u.href);}}
 """
 
-# Per-profile chip styling: the avatar tile (initials + colour) and the blurb line are
-# generated as CSS so a plain Gradio Button can render the design's rich chip.
+# Per-profile chip styling: the blurb line is generated as CSS so a plain Gradio Button
+# can render the design's rich chip. The avatar tile used to be a CSS ::before pseudo-
+# element showing the initials as a colored square — removed now that the chip's real
+# icon= (the illustrated cartoon avatar) is the only avatar shown; keeping both was a
+# redundant duplicate.
 CHIP_CSS = "".join(f"""
-#chip-{p['user_id']}::before{{content:"{p['initials']}";background:{p['avatar_bg']};
-  width:38px;height:38px;border-radius:11px;display:flex;align-items:center;
-  justify-content:center;font-weight:800;font-size:14px;color:#16130A;flex:none}}
 #chip-{p['user_id']}::after{{content:"{p['blurb']}";display:block;font-size:11.5px;
   font-weight:500;color:#6B6B60;margin-top:2px;white-space:nowrap;overflow:hidden;
   text-overflow:ellipsis}}
@@ -217,8 +235,8 @@ def profile_html(p, theme, reason):
         f'padding:6px 12px;border-radius:999px">{esc(c)}</span>' for c in p["buys_display"])
     return f"""
 <div style="display:flex;align-items:center;gap:16px;margin-bottom:18px">
-  <div style="width:56px;height:56px;border-radius:16px;display:flex;align-items:center;
-    justify-content:center;font-weight:800;font-size:20px;background:{p['avatar_bg']};color:#16130A">{esc(p['initials'])}</div>
+  <div style="width:56px;height:56px;border-radius:16px;overflow:hidden;flex:none;
+    background:{p['avatar_bg']}">{AVATAR_SVG[p['user_id']]}</div>
   <div style="flex:1;min-width:0">
     <div style="font-size:18px;font-weight:800;letter-spacing:-.01em;color:#16130A">{esc(p['display_name'])}</div>
     <div style="font-size:13px;font-weight:500;color:#63635A">{esc(p['persona'])}</div>
@@ -705,9 +723,8 @@ def auto_profile_list_html(min_tenure=MIN_TENURE_MONTHS):
                  f'<div style="font-size:11.5px;color:#6B6B60;white-space:nowrap;overflow:hidden;'
                  f'text-overflow:ellipsis">{esc(p.get("order_frequency"))} · '
                  f'{esc(p.get("tenure"))}</div></div>')
-        avatar = (f'<div style="width:30px;height:30px;border-radius:9px;flex:none;display:flex;'
-                  f'align-items:center;justify-content:center;font-weight:800;font-size:12px;'
-                  f'background:{p["avatar_bg"]};color:#16130A">{esc(p["initials"])}</div>')
+        avatar = (f'<div style="width:30px;height:30px;border-radius:9px;flex:none;overflow:hidden;'
+                  f'background:{p["avatar_bg"]}">{AVATAR_SVG[p["user_id"]]}</div>')
 
         if ok:
             chips = (f'<div style="display:flex;gap:5px;flex:none">'
