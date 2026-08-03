@@ -985,10 +985,6 @@ def cart_phone_html(uid, cart_total):
 
     def _filler_card(it):
         badges = []
-        if it.get("is_anchor"):
-            badges.append('<span style="font-size:9.5px;font-weight:800;color:#7A6100;'
-                           'background:#FFF3D6;border-radius:20px;padding:2px 8px;white-space:nowrap">'
-                           '🔗 Same category as your push nudge</span>')
         if it["covers_gap"]:
             badges.append('<span style="font-size:9.5px;font-weight:800;color:#146634;'
                            'background:#EAF7EE;border-radius:20px;padding:2px 8px;white-space:nowrap">'
