@@ -624,7 +624,7 @@ TOP = """
 <div class="nb-top">
   <div class="nb-brand">
     <div class="nb-logo">🛒</div>
-    <div><div class="nb-t1">Category Nudge Agent</div>
+    <div><div class="nb-t1">BlinkIQ <span style="font-weight:400;color:#6B6B60">— Category Nudge Agent</span></div>
     <div class="nb-t2">Part 4 MVP · nudges a repeat buyer toward one new category</div></div>
   </div>
   <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
@@ -1390,7 +1390,7 @@ def on_generate(uid):
     return reasoning_html(theme, r, p=p), phone_html(p, r), measurement_plan_html(r)
 
 
-with gr.Blocks(title="Blinkit Category Nudge Agent", css=CSS, head=FONT_LINK,
+with gr.Blocks(title="BlinkIQ — Category Nudge Agent", css=CSS, head=FONT_LINK,
                js=FORCE_LIGHT, theme=gr.themes.Base()) as demo:
     gr.HTML(FONT_LINK)
     gr.HTML(TOP)
