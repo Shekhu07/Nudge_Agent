@@ -138,17 +138,25 @@ def _client():
 # on one phrasing — an early batch produced four "Your <basket> run is missing ..." titles out
 # of five. Assigning an angle per user breaks that convergence without another API call.
 # Deterministic (hashed on user_id), so a given user always gets the same angle.
-PUSH_ANGLES = [
-    "an observation about what is already in their basket, then the gap",
-    "a short, light question that only makes sense for THIS shopper",
-    "a concrete everyday moment where this category would have helped them",
-    "name the specific hesitation this user would have, then answer it in the body",
+_HINGLISH_ANGLE = (
     "a warm, casual Hinglish tone — natural Hindi-English mix like texting a friend, e.g. "
     "'thoda try toh banta hai' or 'ek baar dekh hi lo, pasand aayega'. Not a literal "
     "word-for-word translation of an English line — write it the way someone would "
     "actually text, code-switching naturally rather than translating every word. Still a "
     "REAL, specific hook grounded in this user's basket/incident, same as every other angle "
-    "— Hinglish is a tone, not an excuse to go generic.",
+    "— Hinglish is a tone, not an excuse to go generic."
+)
+
+# Listed twice (2 of 6 slots) so Hinglish lands ~1 in 3 generations instead of 1 in 5 — the
+# selection below is a plain list-index rotation (round-robin for a batch, hash-mod for a
+# single user), so repeating an entry is what raises its odds; no separate weighting system.
+PUSH_ANGLES = [
+    "an observation about what is already in their basket, then the gap",
+    "a short, light question that only makes sense for THIS shopper",
+    "a concrete everyday moment where this category would have helped them",
+    "name the specific hesitation this user would have, then answer it in the body",
+    _HINGLISH_ANGLE,
+    _HINGLISH_ANGLE,
 ]
 
 
@@ -156,7 +164,7 @@ def _push_angle(profile):
     """Fallback angle for a one-off generation (the Operator console's single user).
 
     Hashed on user_id so a given user is stable across runs. The batch path overrides
-    this with an explicit round-robin instead — hashing five users over five angles
+    this with an explicit round-robin instead — hashing five users over six angle slots
     collides, and a batch is the one place where the repetition is actually visible.
     """
     key = str(profile.get("user_id", ""))
