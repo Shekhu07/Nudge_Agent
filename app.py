@@ -1426,7 +1426,7 @@ with gr.Blocks(title="Blinkit Category Nudge Agent", css=CSS, head=FONT_LINK,
 
         with gr.Tab("Auto-nudge queue"):
             with gr.Column(elem_classes="nb-card"):
-                gr.HTML('<div class="nb-eyebrow">Blink & Try It · auto-nudge</div>'
+                gr.HTML('<div class="nb-eyebrow">BlinkIQ · auto-nudge</div>'
                         '<div style="font-size:15px;font-weight:800;color:#16130A;'
                         'margin-top:4px">Pick a user, then preview the push they would receive</div>')
                 with gr.Row():
