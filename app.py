@@ -1249,19 +1249,42 @@ def on_select(uid):
             phone_html(p), measurement_plan_html()] + chips
 
 
+# Share of single-user "Generate" clicks that explore OUTSIDE the adjacency-ranked pool.
+# REPORTED BUG this fixes: "electronics accessories" and "pharmacy" score adjacency from
+# only ONE existing category each ("household" and "personal_care"). For any profile
+# whose basket lacks that one category — 5 of 8 synthetic profiles, for electronics —
+# their score is a hard 0, and there are always >=4 OTHER categories scoring >0, so they
+# can never enter the top-4 pool _rotated_category() used to sample from. No amount of
+# re-clicking could ever surface them for those users; that was a structural exclusion,
+# not something the old "rotate within the top 4" logic could randomize past.
+EXPLORATION_RATE = 0.3
+
+
 def _rotated_category(p):
-    """Randomly picks among this user's genuinely-adjacent candidates (adjacency score > 0,
-    drawn from the exact same top-4 pool the "Also considered — ranked" panel already
-    displays) instead of always defaulting to the ranker's #1. Every pick is still a real,
-    basket-relevant category — only WHICH qualifying one gets used varies per click, so
-    repeated demo runs show variety without the agent ever suggesting something arbitrary.
-    Falls back to the full pool if nothing scores above 0 (shouldn't happen in practice,
-    every basket we have scores something, but kept as a safety net)."""
-    pool = rank_suggestable_categories(p)
-    if not pool:
+    """Picks this user's next suggested category, mixing two behaviours:
+
+    - Most of the time (1 - EXPLORATION_RATE): randomly among genuinely-adjacent
+      candidates (adjacency score > 0) from the ranked top-4 pool — same as before,
+      the ranker's ordinary "relevant variety" behaviour.
+    - The rest of the time (EXPLORATION_RATE): uniformly among ALL never-bought
+      categories for this user, INCLUDING zero-adjacency ones like electronics
+      accessories or pharmacy for a profile that doesn't trigger them. This is the
+      only path that gives those categories a real, nonzero chance of being nudged
+      for such a profile — without it, repeated clicks only ever reshuffled the same
+      already-qualifying 4, so certain categories were nudged for some profiles but
+      structurally never for others.
+
+    Falls back to the full pool if nothing scores above 0 (shouldn't happen in
+    practice, every basket we have scores something, but kept as a safety net).
+    """
+    full_pool = rank_suggestable_categories(p, top_n=len(SUGGESTABLE_CATEGORIES))
+    if not full_pool:
         return None
+    if random.random() < EXPLORATION_RATE:
+        return random.choice(full_pool)
+    top4_pool = rank_suggestable_categories(p)
     scores = adjacency_scores(p)
-    candidates = [c for c in pool if scores.get(c, 0) > 0] or pool
+    candidates = [c for c in top4_pool if scores.get(c, 0) > 0] or top4_pool
     return random.choice(candidates)
 
 
