@@ -78,7 +78,10 @@ Hard rules:
      notification read as a person who noticed something about YOU, not a system that ran a
      query and stamped a template — never omit the greeting, and never let it feel bolted on
      (the sentence must still flow naturally read aloud). Never follow the greeting with
-     "Discover", "Explore", "Introducing", "Check out", or "New ways to".
+     "Discover", "Explore", "Introducing", "Check out", or "New ways to". EXCEPTION for the
+     Hinglish angle (see PUSH_ANGLES): the greeting itself may adapt to that tone — "Arre
+     {first name}," or "Hey {first name}," are both fine — but it must still be a genuine
+     name greeting, not skipped.
    - push_body: under 110 characters, at most two short clauses. It MUST still carry the lead
      trust driver in compressed, human form — the guarantee is the whole point of the nudge —
      but phrase it like a person, not a policy document, and phrase it DIFFERENTLY each time.
@@ -140,6 +143,12 @@ PUSH_ANGLES = [
     "a short, light question that only makes sense for THIS shopper",
     "a concrete everyday moment where this category would have helped them",
     "name the specific hesitation this user would have, then answer it in the body",
+    "a warm, casual Hinglish tone — natural Hindi-English mix like texting a friend, e.g. "
+    "'thoda try toh banta hai' or 'ek baar dekh hi lo, pasand aayega'. Not a literal "
+    "word-for-word translation of an English line — write it the way someone would "
+    "actually text, code-switching naturally rather than translating every word. Still a "
+    "REAL, specific hook grounded in this user's basket/incident, same as every other angle "
+    "— Hinglish is a tone, not an excuse to go generic.",
 ]
 
 
@@ -147,7 +156,7 @@ def _push_angle(profile):
     """Fallback angle for a one-off generation (the Operator console's single user).
 
     Hashed on user_id so a given user is stable across runs. The batch path overrides
-    this with an explicit round-robin instead — hashing five users over four angles
+    this with an explicit round-robin instead — hashing five users over five angles
     collides, and a batch is the one place where the repetition is actually visible.
     """
     key = str(profile.get("user_id", ""))
