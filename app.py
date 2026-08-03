@@ -932,18 +932,34 @@ def on_run_auto_batch(min_tenure=MIN_TENURE_MONTHS, uid=None):
             'No profile passes the gate at this tenure threshold — nothing would be sent.</div>',
             0, total)
 
-    assigned = _assign_distinct_categories(queue)
-    # Spread push_title hook angles round-robin across the batch. Each nudge is an
-    # independent Groq call that cannot see the others, so without this they converge on
-    # one phrasing; hashing per user collides at this batch size, so assign by position.
-    angles = {p["user_id"]: PUSH_ANGLES[i % len(PUSH_ANGLES)] for i, p in enumerate(queue)}
+    if uid:
+        # REPORTED BUG this fixes: single-user preview always showed the same category
+        # ("Kitchen and dining") and always English. _assign_distinct_categories() and the
+        # round-robin angle assignment below are both batch-position logic — with a
+        # 1-item queue, _assign_distinct_categories trivially returns that user's #1
+        # ranked category every time (nothing to deduplicate against), and
+        # `i % len(PUSH_ANGLES)` is always `0 % len == 0`, always the first (English)
+        # angle. Neither bug shows up in a real multi-user batch, only in single-user
+        # mode. Reuse the same randomized pick the Operator console's "Generate nudge"
+        # button already uses instead, so re-running the batch for the same user
+        # actually varies the category and can land Hinglish.
+        def _gen(p):
+            theme, reason = match_profile_to_theme(p, THEMES)
+            return generate_nudge(p, theme, reason, forced_category=_rotated_category(p),
+                                  push_angle=random.choice(PUSH_ANGLES))
+    else:
+        assigned = _assign_distinct_categories(queue)
+        # Spread push_title hook angles round-robin across the batch. Each nudge is an
+        # independent Groq call that cannot see the others, so without this they converge on
+        # one phrasing; hashing per user collides at this batch size, so assign by position.
+        angles = {p["user_id"]: PUSH_ANGLES[i % len(PUSH_ANGLES)] for i, p in enumerate(queue)}
 
-    def _gen(p):
-        theme, reason = match_profile_to_theme(p, THEMES)
-        # REAL Groq call, pinned to this user's pre-assigned category so the batch spans
-        # distinct shelves instead of several users landing on the same one.
-        return generate_nudge(p, theme, reason, forced_category=assigned.get(p["user_id"]),
-                              push_angle=angles.get(p["user_id"]))
+        def _gen(p):
+            theme, reason = match_profile_to_theme(p, THEMES)
+            # REAL Groq call, pinned to this user's pre-assigned category so the batch spans
+            # distinct shelves instead of several users landing on the same one.
+            return generate_nudge(p, theme, reason, forced_category=assigned.get(p["user_id"]),
+                                  push_angle=angles.get(p["user_id"]))
 
     cards, used = "", []
     with ThreadPoolExecutor(max_workers=min(8, len(queue))) as pool:
