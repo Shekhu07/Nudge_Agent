@@ -81,34 +81,50 @@ def cart_lines(profile, cart_total, max_lines=3):
 
 
 # SYNTHETIC low-cost filler items per suggestable category. Prices are illustrative.
+#
+# Each category also carries one micro-priced item (₹9-20). Without one, a near-threshold
+# gap (e.g. cart ₹190, gap ₹9) had no item close to the gap to offer — the cheapest
+# available was ₹45+, so suggest_fillers() still "covered" the gap but overshot it by
+# ₹35-70, pushing the cart well past the threshold instead of topping it up cleanly.
 FILLER_CATALOG = {
     "home & cleaning":        [{"name": "Stainless Steel Cleaner", "price": 65},
-                               {"name": "Microfiber Cloth (3 pack)", "price": 55}],
+                               {"name": "Microfiber Cloth (3 pack)", "price": 55},
+                               {"name": "Matchbox (1 pack)", "price": 9}],
     "books, toys & stationery": [{"name": "Sticky Notes (400 sheets)", "price": 60},
-                               {"name": "Mini Puzzle Toy", "price": 70}],
+                               {"name": "Mini Puzzle Toy", "price": 70},
+                               {"name": "Pencil (Pack of 2)", "price": 10}],
     "kitchen & dining":       [{"name": "Silicone Spatula", "price": 70},
-                               {"name": "Microfibre Kitchen Towel", "price": 50}],
+                               {"name": "Microfibre Kitchen Towel", "price": 50},
+                               {"name": "Toothpick Pack", "price": 12}],
     "packaged gourmet foods": [{"name": "Artisan Cracker Pack", "price": 75},
-                               {"name": "Single-Origin Coffee Sachets", "price": 60}],
+                               {"name": "Single-Origin Coffee Sachets", "price": 60},
+                               {"name": "Chewing Gum Pack", "price": 10}],
     "health & wellness":      [{"name": "Vitamin C Effervescent Tube", "price": 80},
-                               {"name": "Electrolyte Sachets (5)", "price": 55}],
+                               {"name": "Electrolyte Sachets (5)", "price": 55},
+                               {"name": "Cotton Ball Pack", "price": 15}],
     "beauty & cosmetics":     [{"name": "Lip Balm Duo", "price": 65},
-                               {"name": "Sheet Mask (2 pack)", "price": 50}],
+                               {"name": "Sheet Mask (2 pack)", "price": 50},
+                               {"name": "Hair Pin Card", "price": 10}],
     "personal care":          [{"name": "Travel Face Wash", "price": 60},
-                               {"name": "Bamboo Cotton Buds", "price": 45}],
+                               {"name": "Bamboo Cotton Buds", "price": 45},
+                               {"name": "Ear Bud Mini Pack (20s)", "price": 15}],
     "pet supplies":           [{"name": "Dog Biscuit Snack Pack", "price": 70},
-                               {"name": "Catnip Toy", "price": 60}],
+                               {"name": "Catnip Toy", "price": 60},
+                               {"name": "Cat Treat Single Pack", "price": 15}],
     "baby care":              [{"name": "Baby Wipes (72s)", "price": 75},
-                               {"name": "Baby Lotion Mini", "price": 65}],
+                               {"name": "Baby Lotion Mini", "price": 65},
+                               {"name": "Baby Wipes Travel Pack (10s)", "price": 20}],
     # Deliberately non-prescription, generic OTC/hygiene items only — see the "pharmacy is a
     # KNOWN COMPROMISE" note in friction_matching.py. No medicine-like items in a demo catalog.
     "pharmacy":               [{"name": "Adhesive Bandages Pack", "price": 45},
-                               {"name": "Hand Sanitizer (50ml)", "price": 55}],
+                               {"name": "Hand Sanitizer (50ml)", "price": 55},
+                               {"name": "Antiseptic Wipe (Single)", "price": 10}],
     # Small/cheap accessories only, matching the "no full electronics" note in
     # friction_matching.py — the filler mechanic needs sub-₹80 items, which full electronics
     # (power banks, chargers) rarely are.
     "electronics accessories": [{"name": "USB-C Cable (1m)", "price": 79},
-                               {"name": "Phone Grip Stand", "price": 65}],
+                               {"name": "Phone Grip Stand", "price": 65},
+                               {"name": "SIM Ejector Pin", "price": 15}],
 }
 
 
