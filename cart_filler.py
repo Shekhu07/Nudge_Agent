@@ -82,49 +82,86 @@ def cart_lines(profile, cart_total, max_lines=3):
 
 # SYNTHETIC low-cost filler items per suggestable category. Prices are illustrative.
 #
-# Each category also carries one micro-priced item (₹9-20). Without one, a near-threshold
-# gap (e.g. cart ₹190, gap ₹9) had no item close to the gap to offer — the cheapest
-# available was ₹45+, so suggest_fillers() still "covered" the gap but overshot it by
-# ₹35-70, pushing the cart well past the threshold instead of topping it up cleanly.
+# Each category spans its full min-to-max price range in ~10-15 rupee steps (roughly
+# ₹9 to ₹80), rather than sitting at a few widely-spaced price points. A sparser catalog
+# only closed gaps well near those few points — anything in between (e.g. a ₹30 or ₹42
+# gap) still had nothing close, so suggest_fillers() would overshoot it. Continuous
+# coverage means whatever gap shows up has a genuinely close-priced, non-duplicate item.
 FILLER_CATALOG = {
-    "home & cleaning":        [{"name": "Stainless Steel Cleaner", "price": 65},
+    "home & cleaning":        [{"name": "Dish Scrub Pad (Single)", "price": 9},
+                               {"name": "Sponge Wipe (2 pack)", "price": 20},
+                               {"name": "Room Freshener Spray (Mini)", "price": 30},
+                               {"name": "Toilet Brush (Single)", "price": 40},
                                {"name": "Microfiber Cloth (3 pack)", "price": 55},
-                               {"name": "Dish Scrub Pad (Single)", "price": 9}],
-    "books, toys & stationery": [{"name": "Sticky Notes (400 sheets)", "price": 60},
-                               {"name": "Mini Puzzle Toy", "price": 70},
-                               {"name": "Pencil (Pack of 2)", "price": 10}],
-    "kitchen & dining":       [{"name": "Silicone Spatula", "price": 70},
+                               {"name": "Stainless Steel Cleaner", "price": 65},
+                               {"name": "Floor Cleaner (1L)", "price": 78}],
+    "books, toys & stationery": [{"name": "Pencil (Pack of 2)", "price": 10},
+                               {"name": "Crayon Box (12 pcs)", "price": 22},
+                               {"name": "Notebook (Ruled, A5)", "price": 32},
+                               {"name": "Coloring Book", "price": 44},
+                               {"name": "Sticky Notes (400 sheets)", "price": 58},
+                               {"name": "Mini Puzzle Toy", "price": 70}],
+    "kitchen & dining":       [{"name": "Toothpick Pack", "price": 12},
+                               {"name": "Kitchen Foil Roll (Small)", "price": 24},
+                               {"name": "Steel Ladle (Single)", "price": 38},
                                {"name": "Microfibre Kitchen Towel", "price": 50},
-                               {"name": "Toothpick Pack", "price": 12}],
-    "packaged gourmet foods": [{"name": "Artisan Cracker Pack", "price": 75},
+                               {"name": "Cutting Board (Small)", "price": 62},
+                               {"name": "Silicone Spatula", "price": 70}],
+    "packaged gourmet foods": [{"name": "Herbal Tea Sachet (Single)", "price": 10},
+                               {"name": "Roasted Nuts Pack (Small)", "price": 24},
+                               {"name": "Dark Chocolate Bar (Mini)", "price": 36},
+                               {"name": "Instant Soup Sachet Pack", "price": 48},
                                {"name": "Single-Origin Coffee Sachets", "price": 60},
-                               {"name": "Herbal Tea Sachet (Single)", "price": 10}],
-    "health & wellness":      [{"name": "Vitamin C Effervescent Tube", "price": 80},
+                               {"name": "Artisan Cracker Pack", "price": 75}],
+    "health & wellness":      [{"name": "Herbal Throat Lozenge (Single)", "price": 10},
+                               {"name": "Herbal Immunity Shot (Single)", "price": 24},
+                               {"name": "Multivitamin Gummies (Small Pack)", "price": 36},
+                               {"name": "Aloe Vera Juice (Small Bottle)", "price": 48},
                                {"name": "Electrolyte Sachets (5)", "price": 55},
-                               {"name": "Herbal Throat Lozenge (Single)", "price": 10}],
-    "beauty & cosmetics":     [{"name": "Lip Balm Duo", "price": 65},
+                               {"name": "Herbal Energy Bar", "price": 66},
+                               {"name": "Vitamin C Effervescent Tube", "price": 80}],
+    "beauty & cosmetics":     [{"name": "Nail File (Single)", "price": 9},
+                               {"name": "Hair Clip Set", "price": 22},
+                               {"name": "Makeup Remover Wipes (10s)", "price": 34},
+                               {"name": "Face Wash (Travel Size)", "price": 44},
                                {"name": "Sheet Mask (2 pack)", "price": 50},
-                               {"name": "Nail File (Single)", "price": 9}],
-    "personal care":          [{"name": "Travel Face Wash", "price": 60},
+                               {"name": "Lip Balm Duo", "price": 65},
+                               {"name": "Compact Powder (Mini)", "price": 76}],
+    "personal care":          [{"name": "Travel Soap Bar (Single)", "price": 10},
+                               {"name": "Deodorant (Travel Size)", "price": 24},
+                               {"name": "Body Lotion Mini", "price": 36},
                                {"name": "Bamboo Cotton Buds", "price": 45},
-                               {"name": "Travel Soap Bar (Single)", "price": 10}],
-    "pet supplies":           [{"name": "Dog Biscuit Snack Pack", "price": 70},
+                               {"name": "Travel Face Wash", "price": 60},
+                               {"name": "Body Wash (250ml)", "price": 75}],
+    "pet supplies":           [{"name": "Cat Treat Single Pack", "price": 15},
+                               {"name": "Chew Toy (Small)", "price": 26},
+                               {"name": "Pet Grooming Brush", "price": 38},
+                               {"name": "Pet Shampoo (Mini)", "price": 50},
                                {"name": "Catnip Toy", "price": 60},
-                               {"name": "Cat Treat Single Pack", "price": 15}],
-    "baby care":              [{"name": "Baby Wipes (72s)", "price": 75},
+                               {"name": "Dog Biscuit Snack Pack", "price": 70}],
+    "baby care":              [{"name": "Baby Soap Bar (Mini)", "price": 15},
+                               {"name": "Baby Oil Mini", "price": 26},
+                               {"name": "Baby Powder (Small)", "price": 38},
+                               {"name": "Baby Diaper Rash Cream (Mini)", "price": 50},
                                {"name": "Baby Lotion Mini", "price": 65},
-                               {"name": "Baby Soap Bar (Mini)", "price": 15}],
+                               {"name": "Baby Wipes (72s)", "price": 75}],
     # Deliberately non-prescription, generic OTC/hygiene items only — see the "pharmacy is a
     # KNOWN COMPROMISE" note in friction_matching.py. No medicine-like items in a demo catalog.
-    "pharmacy":               [{"name": "Adhesive Bandages Pack", "price": 45},
+    "pharmacy":               [{"name": "Antiseptic Wipe (Single)", "price": 10},
+                               {"name": "Face Mask (3-ply, 5 pack)", "price": 24},
+                               {"name": "Cotton Roll (Small)", "price": 36},
+                               {"name": "Adhesive Bandages Pack", "price": 45},
                                {"name": "Hand Sanitizer (50ml)", "price": 55},
-                               {"name": "Antiseptic Wipe (Single)", "price": 10}],
+                               {"name": "Disinfectant Spray (Small)", "price": 68}],
     # Small/cheap accessories only, matching the "no full electronics" note in
     # friction_matching.py — the filler mechanic needs sub-₹80 items, which full electronics
     # (power banks, chargers) rarely are.
-    "electronics accessories": [{"name": "USB-C Cable (1m)", "price": 79},
+    "electronics accessories": [{"name": "SIM Ejector Pin", "price": 15},
+                               {"name": "Cable Organizer Clips (Pack)", "price": 26},
+                               {"name": "Earphone Splitter", "price": 38},
+                               {"name": "Screen Cleaning Kit (Mini)", "price": 50},
                                {"name": "Phone Grip Stand", "price": 65},
-                               {"name": "SIM Ejector Pin", "price": 15}],
+                               {"name": "USB-C Cable (1m)", "price": 79}],
 }
 
 
