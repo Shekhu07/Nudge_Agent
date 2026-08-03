@@ -814,8 +814,9 @@ def _coverage_strip(used):
 </div>"""
 
 
-def _lock_screen(inner, queued, total, used_categories=None):
+def _lock_screen(inner, queued, total, used_categories=None, footer=None):
     coverage = _coverage_strip(used_categories or [])
+    footer = footer or f"{queued} of {total} profiles nudged · each payload is shaped from that user's generated nudge"
     return f"""
 <div class="nb-eyebrow" style="text-align:center;margin-bottom:12px">Push payload preview</div>
 <div style="width:320px;margin:0 auto;background:#0E0E0C;border-radius:42px;padding:11px;
@@ -834,7 +835,7 @@ def _lock_screen(inner, queued, total, used_categories=None):
   </div>
 </div>
 <div style="text-align:center;font-size:11.5px;font-weight:600;color:#6B6B60;margin-top:12px">
-  {queued} of {total} profiles nudged · each payload is shaped from that user's generated nudge</div>
+  {footer}</div>
 {coverage}"""
 
 
@@ -871,12 +872,35 @@ def _assign_distinct_categories(queue):
     return assigned
 
 
-def on_run_auto_batch(min_tenure=MIN_TENURE_MONTHS):
+def on_run_auto_batch(min_tenure=MIN_TENURE_MONTHS, uid=None):
+    """Preview the push payload for ONE selected synthetic user.
+
+    Previously this ran the whole eligible queue at once and stacked every resulting
+    notification onto a single lock screen (matching the deck's slide-8 screenshot) —
+    realistic for "here's the batch," but it meant you could never see what one specific
+    user's own notification looked like without scanning a pile of unrelated cards.
+    `uid` scopes the run to just that user: the eligibility GATE still applies (this
+    demonstrates Feature 1's targeting rule, so a user who doesn't qualify at the current
+    tenure threshold correctly shows as not-nudged, same as being absent from the old
+    batch view), but the lock screen renders at most one card.
+    """
     total = len(PROFILES)
     queue = eligible_profiles(min_tenure_months=int(min_tenure))
     if "GROQ_API_KEY" not in os.environ:
         return ('<div class="nb-dark"><div class="k">Error</div><div style="margin-top:8px;font-size:13px">'
                 'GROQ_API_KEY is not configured on the server.</div></div>')
+    if uid:
+        p = BY_ID.get(uid)
+        queue = [x for x in queue if x["user_id"] == uid]
+        if not queue:
+            _, why = eligibility_detail(p, int(min_tenure)) if p else (False, "Unknown user.")
+            name = esc(p["display_name"]) if p else esc(uid)
+            return _lock_screen(
+                f'<div style="background:rgba(255,255,255,.12);border-radius:15px;padding:16px;'
+                f'font-size:12px;color:rgba(255,255,255,.85);text-align:center;line-height:1.5">'
+                f'<b style="color:#fff">{name}</b> would not receive an auto-nudge at this tenure '
+                f'threshold — {esc(why)}. Lower the threshold or pick a different user.</div>',
+                0, total)
     if not queue:
         return _lock_screen(
             '<div style="background:rgba(255,255,255,.12);border-radius:15px;padding:16px;'
@@ -917,7 +941,9 @@ def on_run_auto_batch(min_tenure=MIN_TENURE_MONTHS):
             cards += _notification_card(p, payload)
             if payload.get("category"):
                 used.append(payload["category"])
-    return _lock_screen(cards, len(queue), total, used_categories=used)
+    footer = (f"Previewing the push {esc(queue[0]['display_name'])} would receive · "
+              f"not part of a batch send") if uid else None
+    return _lock_screen(cards, len(queue), total, used_categories=used, footer=footer)
 
 
 # ----------------------- Feature 2: checkout cart-filler -----------------------
@@ -1348,6 +1374,9 @@ with gr.Blocks(title="Blinkit Category Nudge Agent", css=CSS, head=FONT_LINK,
                             tenure = gr.Slider(3, 12, value=MIN_TENURE_MONTHS, step=1,
                                                label="Minimum tenure threshold (months)")
                         gate_out = gr.HTML(auto_eligibility_html())
+                        auto_user = gr.Dropdown(
+                            choices=[(p["display_name"], p["user_id"]) for p in PROFILES],
+                            value=PROFILES[0]["user_id"], label="Preview push for user")
                         run_batch = gr.Button("▶ Run scheduled batch", elem_id="genbatch")
                 with gr.Column(scale=90):
                     with gr.Column(elem_classes="nb-card"):
@@ -1355,7 +1384,7 @@ with gr.Blocks(title="Blinkit Category Nudge Agent", css=CSS, head=FONT_LINK,
                             '<div style="background:rgba(255,255,255,.12);border-radius:15px;padding:16px;'
                             'font-size:12px;color:rgba(255,255,255,.85);text-align:center;line-height:1.5">'
                             'Press <b style="color:#fff">Run scheduled batch</b> to generate the payload '
-                            'each queued user would receive.</div>',
+                            'the selected user would receive.</div>',
                             len(eligible_profiles()), len(PROFILES)))
 
         with gr.Tab("Checkout cart-filler"):
@@ -1387,7 +1416,7 @@ with gr.Blocks(title="Blinkit Category Nudge Agent", css=CSS, head=FONT_LINK,
     gen.click(on_generate, inputs=sel, outputs=[reason_out, phone_out, measure_out])
     tenure.change(auto_gate_head, inputs=tenure, outputs=head_out)
     tenure.change(auto_eligibility_html, inputs=tenure, outputs=gate_out)
-    run_batch.click(on_run_auto_batch, inputs=tenure, outputs=auto_out)
+    run_batch.click(on_run_auto_batch, inputs=[tenure, auto_user], outputs=auto_out)
     for _c in (cart_user, cart_amt):
         _c.change(cart_phone_html, inputs=[cart_user, cart_amt], outputs=cart_phone)
         _c.change(cart_logic_html, inputs=[cart_user, cart_amt], outputs=cart_out)
