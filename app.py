@@ -104,6 +104,8 @@ CHIP_CSS = "".join(f"""
 
 CSS = """
 :root{color-scheme:light}
+details>summary{list-style:none}
+details>summary::-webkit-details-marker{display:none}
 html,body,.gradio-container,.dark .gradio-container{background:#F4F5F3 !important}
 /* THEME-PROOFING (above the class rules; not !important so ours + inline still win) */
 .gradio-container.gradio-container.gradio-container *,.dark .gradio-container.gradio-container.gradio-container *{color:#16130A}
@@ -624,8 +626,7 @@ TOP = """
 <div class="nb-top">
   <div class="nb-brand">
     <div class="nb-logo">🛒</div>
-    <div><div class="nb-t1">BlinkIQ <span style="font-weight:400;color:#6B6B60">— Category Nudge Agent</span></div>
-    <div class="nb-t2">Part 4 MVP · nudges a repeat buyer toward one new category</div></div>
+    <div><div class="nb-t1">BlinkIQ <span style="font-weight:400;color:#6B6B60">— Category Nudge Agent</span></div></div>
   </div>
   <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
     <div class="nb-pill" style="background:#FFF6D6;border:1px solid #F1DE8E;color:#7A6100">
@@ -1192,25 +1193,31 @@ def cart_logic_html(uid, cart_total):
       <div class="nb-tile-v" style="font-size:16px">{v}</div></div>""" for k, v in stats)
 
     return f"""
-<div style="display:flex;gap:10px;margin-bottom:18px">{stat_html}</div>
-<div class="nb-eyebrow" style="margin-bottom:11px">How the filler is chosen</div>
-{rule_html}
+<div style="display:flex;gap:10px;margin-bottom:14px">{stat_html}</div>
 <div style="display:flex;gap:10px;align-items:flex-start;background:#FFF9E3;border:1px dashed #EBD68A;
-  border-radius:13px;padding:12px 14px;margin:4px 0 18px">
+  border-radius:13px;padding:12px 14px;margin-bottom:14px">
   <div style="font-size:16px">🎯</div>
   <div style="font-size:11.5px;color:#6F5700;line-height:1.5">Complements the push nudge rather than
     repeating it: the queue targets high-intent habituals, while a ₹60 top-up needs
     <b>no pre-existing intent at all</b> — it reaches the low-intent segment the notification
     deliberately skips.</div>
 </div>
-<div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:4px">
-  <div class="nb-eyebrow">Candidate pool · {esc(p['display_name'])}</div>
-  <div style="font-size:11px;font-weight:600;color:#6B6B60">ranked by basket adjacency</div>
-</div>
-<div style="font-size:11.5px;color:#6B6B60;margin-bottom:10px;line-height:1.45">Every candidate is from
-  a category this user has never purchased. Top {len(res['items'])} shown in the app, one per category.
-  {'🔗 marks the category the push-nudge agent is instructed to prefer for this user.' if anchor else ''}</div>
-{pool_html}"""
+<details style="border:1px solid #EFEFE9;border-radius:13px;padding:0 14px">
+  <summary style="cursor:pointer;font-size:12.5px;font-weight:700;color:#16130A;padding:11px 0;
+    list-style:none">How the filler is chosen &amp; full candidate ranking ▾</summary>
+  <div style="padding-bottom:14px">
+    <div class="nb-eyebrow" style="margin-bottom:11px">How the filler is chosen</div>
+    {rule_html}
+    <div style="display:flex;align-items:baseline;justify-content:space-between;margin:14px 0 4px">
+      <div class="nb-eyebrow">Candidate pool · {esc(p['display_name'])}</div>
+      <div style="font-size:11px;font-weight:600;color:#6B6B60">ranked by basket adjacency</div>
+    </div>
+    <div style="font-size:11.5px;color:#6B6B60;margin-bottom:10px;line-height:1.45">Every candidate is from
+      a category this user has never purchased. Top {len(res['items'])} shown in the app, one per category.
+      {'🔗 marks the category the push-nudge agent is instructed to prefer for this user.' if anchor else ''}</div>
+    {pool_html}
+  </div>
+</details>"""
 
 
 def cart_filler_html(uid, cart_total):
@@ -1403,9 +1410,8 @@ with gr.Blocks(title="BlinkIQ — Category Nudge Agent", css=CSS, head=FONT_LINK
             with gr.Row(elem_classes="nb-cols"):
                 with gr.Column(scale=115):
                     with gr.Column(elem_classes="nb-card"):
-                        gr.HTML('<div style="display:flex;align-items:center;justify-content:space-between;'
-                                'margin-bottom:14px"><div class="nb-eyebrow">Step 1 · Pick a synthetic user</div>'
-                                '<div style="font-size:12px;font-weight:600;color:#6B6B60">Part 2 “stuck segment”</div></div>')
+                        gr.HTML('<div style="margin-bottom:14px">'
+                                '<div class="nb-eyebrow">Step 1 · Pick a synthetic user</div></div>')
                         chip_btns = []
                         for i in range(0, len(PROFILES), 2):
                             with gr.Row():
