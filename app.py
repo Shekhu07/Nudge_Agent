@@ -1396,6 +1396,7 @@ with gr.Blocks(title="Blinkit Category Nudge Agent", css=CSS, head=FONT_LINK,
                                     chip_btns.append(gr.Button(
                                         p["display_name"], elem_id=f"chip-{p['user_id']}",
                                         elem_classes="nb-chip", size="sm",
+                                        icon=f"avatars/{p['user_id']}.svg",
                                         variant="primary" if p is PROFILES[0] else "secondary"))
                     with gr.Column(elem_classes="nb-card"):
                         prof_out = gr.HTML(profile_html(_p0, _t0, _r0))
