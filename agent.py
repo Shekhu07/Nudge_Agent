@@ -69,10 +69,15 @@ Hard rules:
      "Something new for the bathroom shelf" — NOT "Discover New Personal Care Essentials"
      (Title Case), and NOT "something new for the bathroom shelf" (all-lowercase reads
      like a bug, not a voice). Both fields always start with a capital letter.
-   - push_title: under 45 characters. A warm, conversational hook that is GROUNDED IN THIS
-     USER — reference the habit you can see in their basket, or something concrete about
-     the category. "Your dairy run is missing something" works; "Need new plates?" does not,
-     because it is a generic question that would fit any shopper on any app. Never open with
+   - push_title: under 60 characters. MUST open with a first-name greeting — "Hey {first
+     name}," or "Hi {first name}," — followed by a warm, conversational hook that is
+     GROUNDED IN THIS USER: reference the habit you can see in their basket, or something
+     concrete about the category. "Hey Priya, your dairy run is missing something" works;
+     "Hey Priya, need new plates?" does not, because the part after the name is still a
+     generic question that would fit any shopper on any app. This is what makes the
+     notification read as a person who noticed something about YOU, not a system that ran a
+     query and stamped a template — never omit the greeting, and never let it feel bolted on
+     (the sentence must still flow naturally read aloud). Never follow the greeting with
      "Discover", "Explore", "Introducing", "Check out", or "New ways to".
    - push_body: under 110 characters, at most two short clauses. It MUST still carry the lead
      trust driver in compressed, human form — the guarantee is the whole point of the nudge —
@@ -95,7 +100,7 @@ Return STRICT JSON only, no prose around it:
   "fresh_line": "the quality/freshness signal as a concrete 5-9 word phrase, e.g. 'Verified brands, sealed and batch-checked' (for electronics accessories: a genuine/certified-brand phrase instead, e.g. 'Certified genuine, factory-sealed box')",
   "inspect_line": "ONLY for suggested_category == 'electronics accessories': the open-box/inspect-before-accepting assurance as a concrete 5-9 word phrase, e.g. 'Open and check before you accept'. Empty string for every other category.",
   "social_proof_line": "one short peer-reassurance line (6-12 words) addressing the user's specific fear; NO invented numbers, ratings, star counts, or buyer counts; empty string when the theme is out of primary scope",
-  "push_title": "lock-screen notification title per rule 8: SENTENCE CASE, under 45 chars, a warm conversational hook. Never Title Case, never opens with Discover/Explore/Introducing/Check out/New ways to.",
+  "push_title": "lock-screen notification title per rule 8: SENTENCE CASE, under 60 chars, MUST open with 'Hey {first name},' or 'Hi {first name},' then a warm conversational hook. Never Title Case, never follows the greeting with Discover/Explore/Introducing/Check out/New ways to.",
   "push_body": "lock-screen notification body per rule 8: under 110 chars, at most two short clauses, carrying the refund guarantee in compressed human form. No invented numbers, times, prices or counts.",
   "cta": "button label, 2-5 words, action-first, e.g. 'Add starter set to cart'",
   "product": "one concrete example product in the suggested category, 3-7 words, e.g. 'Daily Care Set (face wash + lotion)'",
@@ -186,6 +191,7 @@ Theme in primary nudge scope: {not theme.get('out_of_primary_scope', False)}
 Why this user matched: {match_reason}
 {exclude_note}{forced_note}
 User (synthetic profile):
+- First name: {profile.get('display_name', '').split()[0] if profile.get('display_name') else 'there'}
 - Orders: {profile['order_frequency']}
 - Existing categories: {', '.join(profile['top_categories'])}
 - Recent incident: {json.dumps(profile.get('recent_incident'))}
