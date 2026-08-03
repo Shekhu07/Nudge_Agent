@@ -226,7 +226,7 @@ def esc(t):
 
 # ----------------------------- panels -----------------------------
 def profile_html(p, theme, reason):
-    tiles = [("Tenure", p["tenure"]), ("Cadence", p["cadence"]), ("Basket", p["avg_basket"])]
+    tiles = [("Tenure", p["tenure"]), ("Cadence", p["cadence"])]
     tile_html = "".join(
         f'<div class="nb-tile"><div class="nb-tile-k">{esc(k)}</div>'
         f'<div class="nb-tile-v">{esc(v)}</div></div>' for k, v in tiles)
